@@ -1,0 +1,372 @@
+﻿@* This razor view, along with the class for this Flow Action, need the same namespace and Name
+For display purposes, the Razor view may contain spaces, flow will remove these when attempting to find the Flow Processor for this action
+EG:
+  Notification Email.razor and NotificationEmail.cs will work
+  Notification EmailView.razor and NotificationEmail.cs will not work as they have different names once the spaces have been removed
+
+  The FlowAction Definition follows the Same Rules with the Addition of 'Definition' to the end of the class name
+  //So in this instance, even though our View is named 'Upload File', the processor class is named UploadFile.cs
+  //and the Definition class is named 'UserTaskDefinition.cs
+
+  //Flow items are either automatically processed by the system, or require manual processing.
+  //This is defined using the ProcessedBy property of the FlowItem Definition.
+  //Flow Items that are automatically proceesed by the system are done so via the ExecuteActionAsync method of the Flow Item class in the server project.
+  //Flow Items that require manual processing, are done so via the razor page of the Flow Item which resides in the Client project.
+  *@
+
+
+@namespace Dev1.Module.GoogleAdmin.GoogleAction
+
+@using Dev1.Module.GoogleAdmin
+@using Oqtane.Models
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.Extensions.DependencyInjection
+@using System
+@using Oqtane.Services
+@using System.Threading.Tasks
+@using Oqtane.Enums
+@using System.Net.Mail
+@using System.Net
+@using Oqtane.Shared
+@using System.Linq
+@using System.Collections
+@using System.Collections.Generic
+@using System.Security.Cryptography.Xml
+@using Dev1.Flow.Core
+@using Dev1.Flow.Core.Models
+@using Dev1.Flow.Core.Client
+@using Dev1.Flow.Core.Helpers
+@using Dev1.Module.GoogleAdmin.Services
+
+
+@using Google.Apis.Admin.Directory.directory_v1.Data
+
+@inject IGoogleDirectoryService googleDirectoryService
+
+@inject Dev1.Module.GoogleAdmin.Shared.StateContainer stateContainer
+
+@* Must Inherit Dev1.Module.Flow.FlowActionViewBase *@
+@inherits FlowActionViewBase
+
+@if (FlowItemProperties != null)
+{
+    //var userGroupProprty = FlowHelpers.GetFlowProperty(FlowItemProperties.ToList(), "User Group");
+
+    //@if (ForProcessing)
+    //{
+    if (GroupProperty != null)
+    {
+        if (!ForProcessing || ((ForProcessing == GroupProperty.IsForWorkflow)))
+        {
+            <div class="row card mb-3">
+                <div class="card-header">
+                    @GroupProperty.Name
+                    @if (GroupProperty.IsRequired)
+                    {
+                        <small> (Required)</small>
+                    }
+                </div>
+                <div class="card-body">
+
+                    @if (!ForProcessing)
+                    {
+                        if (GroupProperty.ForceWorkflow == false)
+                        {
+                            //Allow the user to specify whether this property is a Workflow Iteem Property.
+                            string IsForWorkflowPropertyId = $"{GroupProperty.Id}_IsForWorkflow";
+                            <div class="mb-2">
+                                <InputBool IsRequired="false" InputTypeName="Checkbox" @bind-PropertyValue:get="@GroupProperty.IsForWorkflow.ToString()"
+                                @bind-PropertyValue:set="e => SetIsForWorkflowProperty(GroupProperty,e)"
+                                PropertyId="@IsForWorkflowPropertyId" PropertyName="For Workflow"></InputBool>
+                            </div>
+                        }
+                        else
+                        {
+                            <p><small>This property is set by the user processing this action in a workflow</small></p>
+                        }
+                    }
+
+                    @if ((ForProcessing == GroupProperty.IsForWorkflow))
+                    {
+                    @if (stateContainer.UserGroups != null)
+                    {
+                        <fieldset disabled="@(ForProcessing != GroupProperty.IsForWorkflow)">
+                            <div class="form-group mb-3">
+                                <select disabled="@(ForProcessing != GroupProperty.IsForWorkflow)" id="group" class="form-select" aria-label="Select Custom Table"
+                                @bind:get="@GroupProperty.Value"
+                                @bind:set="@(async (e) => await SetUserGroupProperty(e))">
+                                    @foreach (var Group in stateContainer.UserGroups)
+                                    {
+                                        if(GroupProperty.Value == null)
+                                        {
+                                            <option selected="selected" value="">Select a Group</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="">Select a Group</option>
+                                        }
+                                        if (Group.Email == GroupProperty.Value)
+                                        {
+                                            <option selected="selected" value="@GroupProperty.Value">@Group.Name</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@Group.Email">@Group.Name</option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+                        </fieldset>
+                    }
+                    else
+                    {
+                        <div class="spinner-border text-info" role="status">
+                        </div>
+                    }
+                    }
+                </div>
+            </div>
+        }
+    }
+    if (RoleProperty != null)
+    {
+        if (!ForProcessing || ((ForProcessing == RoleProperty.IsForWorkflow)))
+        {
+            <div class="row card mb-3">
+                <div class="card-header">
+                    @RoleProperty.Name
+                    @if (RoleProperty.IsRequired)
+                    {
+                        <small> (Required)</small>
+                    }
+                </div>
+                <div class="card-body">
+                    @if (!ForProcessing)
+                    {
+                        if (RoleProperty.ForceWorkflow == false)
+                        {
+                            //Allow the user to specify whether this property is a Workflow Iteem Property.
+                            string IsForWorkflowPropertyId = $"{GroupProperty.Id}_IsForWorkflow";
+                            <div class="mb-2">
+                                <InputBool IsRequired="false" InputTypeName="Checkbox" @bind-PropertyValue:get="@RoleProperty.IsForWorkflow.ToString()"
+                                @bind-PropertyValue:set="e => SetIsForWorkflowProperty(RoleProperty,e)"
+                                PropertyId="@IsForWorkflowPropertyId" PropertyName="For Workflow"></InputBool>
+                            </div>
+                        }
+                        else
+                        {
+                            <p><small>This property is set by the user processing this action in a workflow</small></p>
+                        }
+                    }
+                    @if ((ForProcessing == RoleProperty.IsForWorkflow))
+                    {
+                    <fieldset disabled="@(ForProcessing != RoleProperty.IsForWorkflow)">
+                        <select class="form-select" id="role" @bind:get="RoleProperty.Value"
+                        @bind:set="@(async (e) => await SetItemProperty(@RoleProperty,e))">
+
+                            @foreach (var role in Enum.GetValues(typeof(Models.eGroupRole)))
+                            {
+                                if (RoleProperty.Value == role.ToString())
+                                {
+                                    <option selected="selected" value="@role">@role</option>
+                                }
+                                else
+                                {
+                                    <option value="@role">@role</option>
+                                }
+                            }
+                        </select>
+                    </fieldset>
+                    }
+                </div>
+            </div>
+        }
+    }
+    //}
+}
+else
+{
+    <p>This item does not have any properties. As long as you have fullfilled the instructions for this item, you may go ahead and process it.</p>
+
+}
+
+@* Always Pass in a non-null FlowItem (Contained in the base Class). *@
+@code {
+    // private IList<Group> userGroups;
+
+
+
+    private FlowItemProperty GroupProperty;
+    private FlowItemProperty RoleProperty;
+    //private Models.eGroupRole SelectedRole;
+
+    protected override async Task OnInitializedAsync()
+    {
+        //Note, an action does not need any properties to succesfully run, it depends on what you are trying to do with it.
+        List<FlowItemProperty> flowItemProperties = new List<FlowItemProperty>();
+        if (!ForProcessing)
+        {
+            flowItemProperties.Add(new FlowItemProperty()
+                {
+                    Name = "User Group",
+                    DataTypeId = Convert.ToInt16(eDataType.String),
+                    ForceWorkflow = true,
+                    IsForWorkflow = true,
+                    IsRequired = true
+                });
+
+            flowItemProperties.Add(new FlowItemProperty()
+                {
+                    Name = "Role",
+                    DataTypeId = Convert.ToInt16(eDataType.String),
+                    ForceWorkflow = true,
+                    IsForWorkflow = true,
+                    IsRequired = true
+                });
+
+
+
+
+        }
+
+        //YOU MUST call this base method AFTER adding your item properties above.
+        await base.InitializeProperties(flowItemProperties);
+
+        GroupProperty = GetActionProperty("User Group");
+        RoleProperty = GetActionProperty("Role");
+
+        if(RoleProperty.Value == null)
+        {
+            await SetItemProperty(RoleProperty, Models.eGroupRole.MEMBER.ToString());
+        }
+
+        try
+        {
+            if (stateContainer.UserGroups == null || stateContainer.UserGroups.Count == 1)
+            {
+                //if ((ForProcessing && (WorkflowStatus != (int)eWorkflowStatus.Complete)) || (!ForProcessing && !GroupProperty.IsForWorkflow))
+                //{
+                    stateContainer.UserGroups = googleDirectoryService.GetDirectoryGroupsAsync(ModuleState.ModuleId);
+                //}
+                // else
+                // {
+                //     Group group = new Group()
+                //         {
+                //             Name = GroupProperty.Value
+                //         };
+                //     stateContainer.UserGroups = new List<Group>() { group };
+
+                // }
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error Loading Data {Error}", ex.Message);
+            //await OnDataLoaded.InvokeAsync(false);
+        }
+
+
+        // @if (FlowItem != null && FlowItem.ItemProperties.Any(x => x.Name == "Prompt"))
+        // {
+        //     Prompt = FlowItem.ItemProperties.Where(x => x.Name == "Prompt").First().Value;
+        // }
+        //ActionDefinition = new FlowAction()
+        // {
+        //     Name = "Email Notification",
+        //     ModuleDefinitionName = "Dev1.Module.QandA",
+        //     FriendlyModuleName = "QandA",
+        //     FlowActionName = "Email Notification",
+        //     InputTypeId = Convert.ToInt16(eInputType.SystemTask),
+        //     AssignTo = eActionAssignee.System,
+
+        // };
+
+        // ActionDefinition.FlowActionSystemProperties.Add(new FlowActionSystemProperty
+        // {
+        //     Name = "To Email Address",
+        //     DataTypeId = Convert.ToInt16(eInputType.Text),
+        //     IsRequired = true,
+        // });
+
+
+    }
+
+    // private async Task SetPrompt(ChangeEventArgs args)
+    // {
+
+    //     try
+    //     {
+
+    //         //await GetFiles();
+    //         //ActionProperty promptArgs = new ActionProperty() { Name = "Folder", IsSystemProperty = true, DataTypeId = eDataType.Int };
+    //         await base.SetFlowItemProperty("Prompt", args.Value.ToString(), true);
+    //         //StateHasChanged();
+    //     }
+    //     catch (Exception ex)
+    //     {
+    //         await logger.LogError(ex, "Error Loading Files {Error}", ex.Message);
+    //         //_message = "There was an error selecting this folder.";
+    //         //_messagetype = MessageType.Error;
+    //     }
+    // }
+
+    // private async Task ValueChanged(string propertyint propertyId, ChangeEventArgs newValue)
+    // {
+    //     base.SetWorkflowItemProperty()
+    //     WorkflowItem.WorkflowItemProperties.Where(x => x.Id == propertyId).First().Value = newValue.Value.ToString();
+    //     //answer.Value = newValue;
+    // }
+
+    // private async Task SetUserGroupForWorkflow(string value)
+    // {
+    //     // await SetIsForWorkflowProperty("User Group", value.ToString());
+    //     // var userGroupProperty = GetActionProperty("User Group");
+    //     // if (!userGroupProperty.IsForWorkflow && Convert.ToBoolean(value) == false && (userGroups == null || userGroups.Count == 0))
+    //     //     userGroups = await googleDirectoryService.GetDirectoryGroupsAsync(ModuleState.ModuleId);
+    // }
+
+
+    private async Task SetUserGroupProperty(string PropertyValue)
+    {
+        var g = stateContainer.UserGroups.Where(x => x.Email == PropertyValue).FirstOrDefault();
+        if (g != null)
+        {
+            await SetItemProperty(GroupProperty, g.Email);
+        }
+        else
+        {
+            await logger.LogError("Invalid User Group");
+        }
+
+    }
+
+
+
+    // private async Task SetItemProperty(string PropertyName, string PropertyValue)
+    // {
+    //     // if (ForProcessing)
+    //     // {
+    //     var itemProperty = FlowItemProperties.Where(x => x.Name == PropertyName).FirstOrDefault();
+    //     if (itemProperty != null)
+    //     {
+    //         itemProperty.Value = PropertyValue;
+    //     }
+    //     await FlowItemPropertyChanged.InvokeAsync(itemProperty);
+    //     // }
+    //     // else
+    //     // {
+    //     //     var itemProperty = FlowItemProperties.Where(x => x.Name == PropertyName).FirstOrDefault();
+    //     //     if (itemProperty != null)
+    //     //     {
+    //     //         itemProperty.Value = PropertyValue;
+
+    //     //     }
+    //     //     //await FlowItemChanged.InvokeAsync(FlowItem);
+
+    //     // }
+    // }
+
+
+
+}

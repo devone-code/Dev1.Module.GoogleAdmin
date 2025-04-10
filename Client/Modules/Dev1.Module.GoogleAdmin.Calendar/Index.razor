@@ -1,0 +1,258 @@
+@using Dev1.Module.GoogleAdmin.Models
+@using Dev1.Module.GoogleAdmin.Services
+@using Dev1.Module.GoogleAdmin.Shared.Models
+@using Radzen
+@using Radzen.Blazor
+@using Google.Apis.Calendar.v3.Data
+@namespace Dev1.Module.GoogleAdmin.Calendar
+@inherits ModuleBase
+@inject IGoogleCalendarService GoogleCalendarService
+@inject NavigationManager NavigationManager
+@inject IStringLocalizer<Index> Localizer
+@inject DialogService DialogService
+@inject ISettingService SettingService
+
+<RadzenDialog />
+<RadzenNotification />
+
+@if (loading)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    @*     if (scheduler != null)
+    { *@
+    <h4>GOOGLE Calendar</h4>
+    @* <p>Calendar Description = @_calendar.Description</p> *@
+
+    <RadzenScheduler @ref=@scheduler SlotRender=@OnSlotRender style="height: 768px;" TItem="Appointment" Data=@appointments StartProperty="Start" EndProperty="End" ShowHeader=@true
+    TextProperty="Text" SelectedIndex="2"
+    SlotSelect=@OnSlotSelect AppointmentSelect=@OnAppointmentSelect AppointmentRender=@OnAppointmentRender
+    AppointmentMove=@OnAppointmentMove>
+        <RadzenDayView />
+        <RadzenWeekView />
+        <RadzenMonthView />
+    </RadzenScheduler>
+    @*   } *@
+
+    @* <ActionLink Action="Add" Security="SecurityAccessLevel.Edit" Text="Add GoogleAdmin" ResourceKey="Add" /> *@
+    <br />
+    <br />
+    @*     @if (@_GoogleAdmins.Count != 0)
+    {
+        <Pager Items="@_GoogleAdmins">
+            <Header>
+                <th style="width: 1px;">&nbsp;</th>
+                <th style="width: 1px;">&nbsp;</th>
+                <th>@Localizer["Name"]</th>
+            </Header>
+            <Row>
+                <td><ActionLink Action="Edit" Parameters="@($"id=" + context.GoogleAdminId.ToString())" ResourceKey="Edit"  /></td>
+                <td><ActionDialog Header="Delete GoogleAdmin" Message="Are You Sure You Wish To Delete This GoogleAdmin?" Action="Delete" Security="SecurityAccessLevel.Edit" Class="btn btn-danger" OnClick="@(async () => await Delete(context))" ResourceKey="Delete"  Id="@context.GoogleAdminId.ToString()" /></td>
+                <td>@context.Name</td>
+            </Row>
+        </Pager>
+    }
+    else
+    {
+        <p>@Localizer["Message.DisplayNone"]</p>
+    } *@
+}
+
+@code {
+
+    RadzenScheduler<Appointment> scheduler;
+
+    // public override string RenderMode => RenderModes.Interactive;
+
+    private bool loading;
+
+    //IList<Google.Apis.Calendar.v3.Data.Event> eventItems;
+
+    eCalandarType _calendarType;
+    string _organisationCalendarId;
+    string _calendarId;
+
+
+    public override List<Resource> Resources => new List<Resource>()
+    {
+        new Resource { ResourceType = ResourceType.Stylesheet, Url = ModulePath() + "Module.css" },
+        new Resource { ResourceType = ResourceType.Script, Url = ModulePath() + "Module.js" },
+        new Resource { ResourceType = ResourceType.Stylesheet, Url = ModulePath() + "Radzen.Blazor/css/" + "default.css" },
+        new Resource { ResourceType = ResourceType.Script, Url = ModulePath() + "Radzen.Blazor/" + "Radzen.Blazor.js" },
+    };
+
+    Google.Apis.Calendar.v3.Data.Calendar _calendar;
+
+
+
+
+    IList<Appointment> appointments = new List<Appointment>();
+    //                                 {
+    //                                     new Appointment { Start = DateTime.Today.AddDays(-2), End = DateTime.Today.AddDays(-2), Text = "Birthday" },
+    //                                     new Appointment { Start = DateTime.Today.AddDays(-11), End = DateTime.Today.AddDays(-10), Text = "Day off" },
+    //                                     new Appointment { Start = DateTime.Today.AddDays(-10), End = DateTime.Today.AddDays(-8), Text = "Work from home" },
+    //                                     new Appointment { Start = DateTime.Today.AddHours(10), End = DateTime.Today.AddHours(12), Text = "Online meeting" },
+    //                                     new Appointment { Start = DateTime.Today.AddHours(10), End = DateTime.Today.AddHours(13), Text = "Skype call" },
+    //                                     new Appointment { Start = DateTime.Today.AddHours(14), End = DateTime.Today.AddHours(14).AddMinutes(30), Text = "Dentist appointment" },
+    //                                     new Appointment { Start = DateTime.Today.AddDays(1), End = DateTime.Today.AddDays(12), Text = "Vacation" },
+    //                                 };
+
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            loading = true;
+
+            Dictionary<string, string> settings = await SettingService.GetSiteSettingsAsync(ModuleState.SiteId);
+
+            var cType = SettingService.GetSetting(settings, "Dev1.GoogleAdmin.Calendar:_calendarType", "");
+
+            Enum.TryParse(cType, out _calendarType);
+
+            bool forOrganisation = false;
+
+            switch(_calendarType){
+                case eCalandarType.Organisation:
+                    {
+                        _calendarId = SettingService.GetSetting(settings, "Dev1.GoogleAdmin:_defaultCalendarId", "");
+                        forOrganisation = true;
+                        break;
+                    }
+                case eCalandarType.LoggedInUser:
+                    {
+                        _calendarId = PageState.User.Email;
+                        break;
+                    }
+                case eCalandarType.Custom:
+                    {
+                        _calendarId = SettingService.GetSetting(settings, "Dev1.GoogleAdmin.Calendar:_defaultCalendarId", "");
+                        break;
+                    }
+
+            }
+
+
+            string impersonateAccount = null;
+            if (!forOrganisation)
+                impersonateAccount = PageState.User.Email;
+
+            var events = await GoogleCalendarService.GetCalendarEventsAsync(ModuleState.ModuleId, _calendarId,impersonateAccount);
+            //eventItems = events.Items;           
+            appointments = new List<Appointment>();
+            foreach (var calEvent in events.Items)
+            {
+                Appointment appointment = new Appointment();
+                if (calEvent.Start.DateTime != null)
+                {
+                    appointment.Start = (DateTime)calEvent.Start.DateTime;
+                }
+                if (calEvent.End.DateTime != null)
+                {
+                    appointment.End = (DateTime)calEvent.End.DateTime;
+                }
+                appointment.Text = ((MarkupString)calEvent.Summary).ToString();
+
+                appointments.Add(appointment);
+            }
+
+            loading = false;
+        }
+        catch (Exception ex)
+        {
+            await logger.LogError(ex, "Error Loading GoogleAdmin {Error}", ex.Message);
+            AddModuleMessage(Localizer["Message.LoadError"], MessageType.Error);
+        }
+    }
+
+
+
+
+
+
+
+    void OnSlotRender(SchedulerSlotRenderEventArgs args)
+    {
+        // Highlight today in month view
+        if (args.View.Text == "Month" && args.Start.Date == DateTime.Today)
+        {
+            args.Attributes["style"] = "background: var(--rz-scheduler-highlight-background-color, rgba(255,220,40,.2));";
+        }
+
+        // Highlight working hours (9-18)
+        if ((args.View.Text == "Week" || args.View.Text == "Day") && args.Start.Hour > 8 && args.Start.Hour < 19)
+        {
+            args.Attributes["style"] = "background: var(--rz-scheduler-highlight-background-color, rgba(255,220,40,.2));";
+        }
+    }
+
+    async Task OnSlotSelect(SchedulerSlotSelectEventArgs args)
+    {
+        //console.Log($"SlotSelect: Start={args.Start} End={args.End}");
+
+        if (args.View.Text != "Year")
+        {
+            //need AddAppointmentPage first
+            // Appointment data = await DialogService.OpenAsync<AddAppointmentPage>("Add Appointment",
+            //     new Dictionary<string, object> { { "Start", args.Start }, { "End", args.End } });
+
+            // if (data != null)
+            // {
+            //     appointments.Add(data);
+            //     // Either call the Reload method or reassign the Data property of the Scheduler
+            //     await scheduler.Reload();
+            // }
+        }
+    }
+
+    async Task OnAppointmentSelect(SchedulerAppointmentSelectEventArgs<Appointment> args)
+    {
+
+        var copy = new Appointment
+            {
+                Start = args.Data.Start,
+                End = args.Data.End,
+                Text = args.Data.Text
+            };
+
+         var data = await DialogService.OpenAsync<EditAppointment>("Edit Appointment", new Dictionary<string, object> { { "Appointment", copy } });
+
+        if (data != null)
+        {
+            // Update the appointment
+            args.Data.Start = data.Start;
+            args.Data.End = data.End;
+            args.Data.Text = data.Text;
+        }
+
+        await scheduler.Reload();
+    }
+
+    void OnAppointmentRender(SchedulerAppointmentRenderEventArgs<Appointment> args)
+    {
+        // Never call StateHasChanged in AppointmentRender - would lead to infinite loop
+
+        if (args.Data.Text == "Birthday")
+        {
+            args.Attributes["style"] = "background: red";
+        }
+    }
+
+    async Task OnAppointmentMove(SchedulerAppointmentMoveEventArgs args)
+    {
+        var draggedAppointment = appointments.FirstOrDefault(x => x == args.Appointment.Data);
+
+        if (draggedAppointment != null)
+        {
+            draggedAppointment.Start = draggedAppointment.Start + args.TimeSpan;
+
+            draggedAppointment.End = draggedAppointment.End + args.TimeSpan;
+
+            await scheduler.Reload();
+        }
+    }
+
+}

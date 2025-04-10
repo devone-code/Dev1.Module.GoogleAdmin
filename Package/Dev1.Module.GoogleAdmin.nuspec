@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+  <metadata>
+    <id>Dev1.Module.GoogleAdmin</id>
+    <version>1.0.0</version>
+    <authors>Dev1</authors>
+    <owners>Dev1</owners>
+    <title>GoogleAdmin</title>
+    <description>For Accessing Google APIs</description>
+    <copyright>Dev1</copyright>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <license type="expression">MIT</license>
+    <projectUrl>https://github.com/oqtane/oqtane.framework</projectUrl>
+    <icon>icon.png</icon>
+    <tags>oqtane module</tags>
+    <releaseNotes></releaseNotes>
+    <summary></summary>
+    <dependencies>
+      <dependency id="Oqtane.Framework" version="6.1.1" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="..\Client\bin\Release\net9.0\Dev1.Module.GoogleAdmin.Client.Oqtane.dll" target="lib\net9.0" /> 
+    <file src="..\Client\bin\Release\net9.0\Dev1.Module.GoogleAdmin.Client.Oqtane.pdb" target="lib\net9.0" /> 
+    <file src="..\Server\bin\Release\net9.0\Dev1.Module.GoogleAdmin.Server.Oqtane.dll" target="lib\net9.0" /> 
+    <file src="..\Server\bin\Release\net9.0\Dev1.Module.GoogleAdmin.Server.Oqtane.pdb" target="lib\net9.0" /> 
+    <file src="..\Shared\bin\Release\net9.0\Dev1.Module.GoogleAdmin.Shared.Oqtane.dll" target="lib\net9.0" /> 
+    <file src="..\Shared\bin\Release\net9.0\Dev1.Module.GoogleAdmin.Shared.Oqtane.pdb" target="lib\net9.0" />
+
+	  <file src="..\Client\bin\Release\net9.0\Dev1.Flow.Core.dll" target="lib\net9.0" />
+	  <file src="..\Server\bin\Release\net9.0\Dev1.Module.Flow.Shared.Oqtane.dll" target="lib\net9.0" />
+	  
+	  
+	  
+	  <file src="..\Server\bin\Release\net9.0\Google.Apis.dll" target="lib\net9.0" />
+	  <file src="..\Server\bin\Release\net9.0\Google.Apis.Core.dll" target="lib\net9.0" />
+	  <file src="..\Server\bin\Release\net9.0\Google.Apis.Auth.dll" target="lib\net9.0" />
+	  
+	  <file src="..\Server\bin\Release\net9.0\Google.Apis.Calendar.v3.dll" target="lib\net9.0" />
+	  <file src="..\Server\bin\Release\net9.0\Google.Apis.Admin.Directory.directory_v1.dll" target="lib\net9.0" />
+	  <file src="..\Server\bin\Release\net9.0\Google.Apis.Drive.v3.dll" target="lib\net9.0" />
+
+	  <file src="..\Server\bin\Release\net9.0\Radzen.Blazor.dll" target="lib\net9.0" />
+
+
+	  <file src="..\Server\bin\Release\net9.0\NodaTime.dll" target="lib\net9.0" />
+
+	  <file src="..\Server\wwwroot\**\*.*" target="wwwroot" /> 
+    <file src="icon.png" target="" />
+  </files>
+</package>

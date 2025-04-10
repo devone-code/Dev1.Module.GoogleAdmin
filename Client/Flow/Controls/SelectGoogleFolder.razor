@@ -1,0 +1,71 @@
+﻿@namespace Dev1.Flow.Core.Client
+
+
+@using Dev1.Flow.Core
+@using Dev1.Flow.Core.Models
+@using Dev1.Flow.Core.Client
+@using Dev1.Flow.Core.Helpers
+@using Dev1.Module.GoogleAdmin.Services
+@using Dev1.Module.GoogleAdmin.Shared
+@using Microsoft.AspNetCore.Components.Forms
+@using Oqtane.Modules.Controls
+@using Google.Apis.Drive.v3.Data
+@using System.IO
+
+@inject IFileService fileService
+@inject IGoogleDriveService googleDriveService
+@inject StateContainer stateContainer
+
+
+@inherits ModuleBase
+
+@if (FolderIdProperty != null && FolderNameProperty != null)
+{
+
+    if (stateContainer.DriveFolders != null)
+    {
+        <fieldset disabled="@(ForProcessing != FolderIdProperty.IsForWorkflow)">
+            <div class="form-group">
+                <select class="form-select"
+                        @bind:get="@FolderIdProperty.Value"
+                        @bind:set="@(async (e) => await OnSetFolderProperty.InvokeAsync(e))">
+                    @foreach (var folder in stateContainer.DriveFolders)
+                    {
+                        if (folder.Id == FolderIdProperty.Value)
+                        {
+                            <option selected="selected" value="@folder.Id">@folder.Name</option>
+                        }
+                        else
+                        {
+                            <option value="@folder.Id">@folder.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+        </fieldset>
+    }
+    else
+    {
+        <div class="spinner-border text-info" role="status">
+        </div>
+    }
+
+}
+
+
+@code {
+    [Parameter]
+    public bool ForProcessing { get; set; }
+
+    [Parameter]
+    public FlowItemProperty FolderIdProperty { get; set; }
+
+    [Parameter]
+    public FlowItemProperty FolderNameProperty { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnSetFolderProperty { get; set; }
+
+
+}
+

@@ -1,0 +1,294 @@
+﻿@namespace Dev1.Module.GoogleAdmin.GoogleAction
+
+@using Dev1.Module.GoogleAdmin
+@using Dev1.Module.GoogleAdmin.Models
+@using Dev1.Module.GoogleAdmin.Services
+@using Dev1.Module.GoogleAdmin.Shared
+@using Dev1.Flow.Core
+@using Dev1.Flow.Core.Models
+@using Dev1.Flow.Core.Client
+@using Dev1.Flow.Core.Helpers
+@using Microsoft.AspNetCore.Components.Forms
+@using Oqtane.Modules.Controls
+@using Google.Apis.Drive.v3.Data
+@using System.IO
+
+@inject IFileService fileService
+@inject IGoogleDriveService googleDriveService
+@inject StateContainer stateContainer
+
+@inherits FlowActionViewBase
+
+@if (FlowItemProperties != null)
+{
+
+    @if (FolderIdProperty != null)
+    {
+        if (!ForProcessing || ((ForProcessing == FolderIdProperty.IsForWorkflow)))
+        {
+        <div class="row card mb-3">
+            <div class="card-header">
+                Google Drive Folder
+                @if (FolderIdProperty.IsRequired)
+                {
+                    <small> (Required)</small>
+                }
+            </div>
+            <div class="card-body">
+                @if (!ForProcessing)
+                {
+                    if (FolderIdProperty.ForceWorkflow == false)
+                    {
+                        string IsForWorkflowPropertyId = $"{FolderIdProperty.Id}_IsForWorkflow";
+                        <div class="mb-2">
+                            <InputBool IsRequired="false" InputTypeName="Checkbox" @bind-PropertyValue:get="@FolderIdProperty.IsForWorkflow.ToString()"
+                                       @bind-PropertyValue:set="e => SetIsForWorkflowProperty(FolderIdProperty,e)"
+                                       PropertyId="@IsForWorkflowPropertyId" PropertyName="For Workflow"></InputBool>
+                        </div>
+
+                    }
+                    else
+                    {
+                        <p><small>This property is set by the user processing this action in a workflow</small></p>
+                    }
+                }
+                @if (ForProcessing && !FolderIdProperty.IsForWorkflow)
+                {
+                    <p>@FolderNameProperty.Value</p>
+                }
+                else
+                {
+                    <SelectGoogleFolder ForProcessing="ForProcessing" FolderIdProperty="FolderIdProperty" FolderNameProperty="FolderNameProperty" OnSetFolderProperty="SetFolderProperty"></SelectGoogleFolder>
+                }
+            </div>
+        </div>
+        }
+    }
+
+    @if (ForProcessing)
+    {
+        <div class="row card mb-3">
+            <div class="card-header">
+                Select File
+
+                <small> (Required)</small>
+
+            </div>
+            <div class="card-body">
+
+
+                <InputFile class="form-control" id="fileInput" OnChange="HandleFileSelected" />
+
+
+            </div>
+        </div>
+    }
+
+
+    @if (!ForProcessing && DefaultFileNameProperty != null)
+    {
+        <div class="row card mb-3">
+            <div class="card-header">
+                Select Default File Name
+
+                <small> (Required)</small>
+
+            </div>
+            <div class="card-body">
+                <select class="form-select" id="role" @bind:get="DefaultFileNameProperty.Value"
+                        @bind:set="@(async (e) => await SetItemProperty(@DefaultFileNameProperty,e))">
+
+                    @foreach (var selection in Enum.GetValues(typeof(Models.eDefaultFileName)))
+                    {
+                        if (DefaultFileNameProperty.Value == selection.ToString())
+                        {
+                            <option selected="selected" value="@selection">@selection</option>
+                        }
+                        else
+                        {
+                            <option value="@selection">@selection</option>
+                        }
+                    }
+                </select>
+
+            </div>
+        </div>
+    }
+}
+
+@code {
+    //private eFileSource selectedFileSource = eFileSource.Oqtane;
+    //private FlowItemProperty FileSourceProperty;
+    //private FlowItemProperty FileIdProperty;
+    private FlowItemProperty FileNameProperty;
+    private FlowItemProperty FileDataProperty;
+
+    private FlowItemProperty FolderIdProperty;
+    private FlowItemProperty FolderNameProperty;
+    private FlowItemProperty DefaultFileNameProperty;
+
+
+    private IBrowserFile selectedFile;
+
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        List<FlowItemProperty> flowItemProperties = new List<FlowItemProperty>();
+
+        if (!ForProcessing)
+        {
+
+            // flowItemProperties.Add(new FlowItemProperty()
+            //     {
+            //         Name = "File Source",
+            //         DataTypeId = Convert.ToInt16(eDataType.String),
+            //         ForceWorkflow = false,
+            //         IsForWorkflow = false,
+            //         IsRequired = true,
+            //         Value = eFileSource.Oqtane.ToString() // Default value
+            //     });
+
+
+            //if you want properties that are not for user input, but you wish to store data, you can simply create
+            //them as normal, but exclude them from the razor form.
+            //In this case, 'Uploaded File Link' will be stored after someone uploads a file to google so
+            //we just make sure we set IsForWorkflow = true;
+            //We don't need a local property for this.
+            flowItemProperties.Add(new FlowItemProperty()
+                {
+                    Name = "Uploaded File Link",
+                    DataTypeId = Convert.ToInt16(eDataType.String),
+                    ForceWorkflow = true,
+                    IsForWorkflow = true,
+                    IsRequired = false
+                });
+
+            flowItemProperties.Add(new FlowItemProperty()
+                {
+                    Name = "File Name",
+                    DataTypeId = Convert.ToInt16(eDataType.String),
+                    ForceWorkflow = true,
+                    IsForWorkflow = true,
+                    IsRequired = false,
+
+                });
+
+            flowItemProperties.Add(new FlowItemProperty()
+                {
+                    Name = "Folder Id",
+                    DataTypeId = Convert.ToInt16(eDataType.String),
+                    ForceWorkflow = false,
+                    IsForWorkflow = false,
+                    IsRequired = true
+                });
+
+            flowItemProperties.Add(new FlowItemProperty()
+                {
+                    Name = "Folder Name",
+                    DataTypeId = Convert.ToInt16(eDataType.String),
+                    ForceWorkflow = false,
+                    IsForWorkflow = false,
+                    IsRequired = false,
+
+                });
+
+            flowItemProperties.Add(new FlowItemProperty()
+                {
+                    Name = "File Data",
+                    DataTypeId = Convert.ToInt16(eDataType.String),
+                    ForceWorkflow = true,
+                    IsForWorkflow = true,
+                    IsRequired = true,
+
+                });
+
+            flowItemProperties.Add(new FlowItemProperty()
+                {
+                    Name = "Default File Name",
+                    DataTypeId = Convert.ToInt16(eDataType.String),
+                    ForceWorkflow = false,
+                    IsForWorkflow = false,
+                    IsRequired = true,
+
+                });
+
+
+            
+        }
+        await base.InitializeProperties(flowItemProperties);
+
+        FolderIdProperty = GetActionProperty("Folder Id");
+        FileNameProperty = GetActionProperty("File Name");
+        FolderNameProperty = GetActionProperty("Folder Name");
+        FileDataProperty = GetActionProperty("File Data");
+        DefaultFileNameProperty = GetActionProperty("Default File Name");
+
+        if (DefaultFileNameProperty.Value == null)
+            DefaultFileNameProperty.Value = eDefaultFileName.Original.ToString();
+
+        if (!ForProcessing)
+        {
+            try
+            {
+                if (stateContainer.DriveFolders == null || stateContainer.DriveFolders.Count == 0)
+                {
+                    if ((ForProcessing && (WorkflowStatus != (int)eWorkflowStatus.Complete)) || (!ForProcessing && !FolderIdProperty.IsForWorkflow))
+                    {
+                        stateContainer.DriveFolders = await googleDriveService.GetFoldersAsync(ModuleState.ModuleId);
+
+                    }
+                }
+
+                if (stateContainer.DriveFolders.Count > 0 && FolderIdProperty.Value == null)
+                {
+                    await SetItemProperty(FolderIdProperty, stateContainer.DriveFolders.First().Id);
+                    await SetItemProperty(FolderNameProperty, stateContainer.DriveFolders.First().Name);
+                }
+            }
+            catch (Exception ex)
+            {
+                await logger.LogError(ex, "Error Loading Folders {Error}", ex.Message);
+            }
+        }
+    }
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            selectedFile = e.File;
+
+            // Read the file data
+            using var ms = new MemoryStream();
+
+            // Set maximum file size to 10MB (or your preferred size)
+            var maxAllowedSize = 5 * 1024 * 1024; // 10MB in bytes
+
+            await selectedFile.OpenReadStream(maxAllowedSize).CopyToAsync(ms);
+            byte[] fileBytes = ms.ToArray();
+
+            // Convert to Base64 and store in FileDataProperty
+            string base64Data = Convert.ToBase64String(fileBytes);
+            await SetItemProperty(FileNameProperty, selectedFile.Name);
+            await SetItemProperty(FileDataProperty, base64Data);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error reading file data");
+        }
+    }
+
+    private async Task SetFolderProperty(string folderId)
+    {
+        var folder = stateContainer.DriveFolders.FirstOrDefault(f => f.Id == folderId);
+        if (folder != null)
+        {
+            await SetItemProperty(FolderIdProperty, folder.Id);
+            await SetItemProperty(FolderNameProperty, folder.Name);
+        }
+    }
+
+
+
+}

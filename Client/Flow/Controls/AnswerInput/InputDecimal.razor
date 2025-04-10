@@ -1,0 +1,62 @@
+﻿@namespace Dev1.Flow.Core.Client
+
+@using Microsoft.AspNetCore.Components
+
+@using System.Globalization
+
+@inherits InputTypeBase
+
+@using Microsoft.AspNetCore.Components.Web
+
+
+<div class="form-floating mb-4">
+    <input type="text" class="form-control" value="@val.ToString()" @onchange="ConvertToDecimal" placeholder="Question Text" id="@PropertyId" required="@IsRequired">
+    <label for="@PropertyId">@PropertyName</label>
+</div>
+
+
+
+
+
+@code {
+    private decimal val = 0;
+
+    protected override void OnParametersSet()
+    {
+        if (string.IsNullOrEmpty(PropertyValue))
+        {
+            PropertyValue = DateTime.Now.ToString();
+
+        }
+        else
+        {
+            val = Convert.ToDecimal(PropertyValue);
+        }
+        //base.OnParametersSet();
+    }
+
+
+    //private void Apply()
+    //{
+    //    PropertyValue = value;
+    //    ValueChangedCallback.InvokeAsync(PropertyValue);
+
+    //}
+
+    private async Task ConvertToDecimal(ChangeEventArgs e)
+    {
+        string strVal = e.Value.ToString();
+        decimal dVal;
+        //int iVal;
+        decimal.TryParse(strVal, NumberStyles.Any, CultureInfo.InvariantCulture, out dVal);
+
+            //iVal = Convert.ToInt16(dVal);
+            await PropertyValueChanged.InvokeAsync(dVal.ToString());
+
+        
+
+        val = dVal;
+    }
+
+
+}

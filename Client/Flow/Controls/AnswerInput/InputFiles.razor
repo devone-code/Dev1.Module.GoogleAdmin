@@ -1,0 +1,45 @@
+﻿@namespace Dev1.Flow.Core.Client
+
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+@inherits InputTypeBase
+
+
+@if (InputTypeName == "checkbox")
+{
+    <div class="custom-file">
+        <input @key="PropertyId" id="@PropertyId" Value="@propertyvalue" type="file" name="@PropertyName.Replace(" ", "")"
+               placeholder="Some Text..." class="custom-file-input" required="" @onchange="@((e) => OnPropertyValueChanged(e))">
+        <label class="custom-file-label" for="customFile">Choose file</label>
+    </div>
+
+}
+
+
+
+
+@code
+{
+
+    internal string propertyvalue;
+
+    private Task OnPropertyValueChanged(ChangeEventArgs e)
+    {
+
+        propertyvalue = e.Value.ToString();
+        //OriginalValue = propertyvalue;
+        return PropertyValueChanged.InvokeAsync(propertyvalue.ToString());
+    }
+
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        propertyvalue = (PropertyValue);
+
+    }
+
+
+
+
+}

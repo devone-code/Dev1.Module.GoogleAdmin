@@ -1,0 +1,176 @@
+@namespace Dev1.Module.GoogleAdmin.Calendar
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Components.Forms
+@using Radzen
+@using Radzen.Blazor
+@using Dev1.Module.GoogleAdmin.Models
+@using Dev1.Module.GoogleAdmin.Services
+
+@inherits ModuleBase
+
+
+@inject ISettingService SettingService
+@inject IStringLocalizer<Settings> Localizer
+
+@inject IGoogleCalendarService GoogleCalendarService
+@inject Dev1.Module.GoogleAdmin.Shared.StateContainer stateContainer
+@using Google.Apis.Calendar.v3.Data
+
+
+<div class="container">
+    <div class="row mb-1 align-items-center">
+        <Label Class="col-sm-3" For="processor" HelpText="Select the Calendar to show">Calendar Type:</Label>
+        <div class="col-sm-9 mb-4">
+            <InputSelect @bind-Value="@_calendarType" class="form-select">
+
+                @foreach (var type in Enum.GetValues(typeof(eCalandarType)))
+                {
+                    <option value="@type">@type</option>
+                }
+            </InputSelect>
+        </div>
+
+        @if (stateContainer.Calendars != null)
+        {
+            if (_calendarType == eCalandarType.Custom)
+            {
+                <div class="form-group mb-3">
+                    <label for="calendars">Select the Calendar</label>
+                    <select id="calendars" class="form-select" aria-label="Select Custom Table"
+                    @bind:get="@_defaultCalendarId"
+                    @bind:set="e => SetCalendar(e)">
+                        @foreach (var Calendar in stateContainer.Calendars.Items)
+                        {
+                            if (Calendar.Id == _defaultCalendarId)
+                            {
+                                <option selected="selected" value="@Calendar.Id">@Calendar.Summary</option>
+                            }
+                            else
+                            {
+                                <option value="@Calendar.Id">@Calendar.Summary</option>
+                            }
+                        }
+                    </select>
+                </div>
+            }
+
+        }
+        else
+        {
+            if (String.IsNullOrEmpty(googleError))
+            {
+                <div class="spinner-border text-info" role="status">
+                </div>
+            }
+            else
+            {
+                <p>@googleError</p>
+            }
+        }
+
+
+
+
+    </div>
+</div>
+
+@code {
+    private string resourceType = "Dev1.Module.GoogleAdmin.Settings, Dev1.Module.GoogleAdmin.Client.Oqtane"; // for localization
+    public override string Title => "GoogleAdmin Settings";
+
+
+    string _defaultCalendarId;
+
+
+    string googleError;
+
+    eCalandarType _calendarType;
+
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Dictionary<string, string> settings = await SettingService.GetSiteSettingsAsync(ModuleState.SiteId);
+            _defaultCalendarId = SettingService.GetSetting(settings, "Dev1.GoogleAdmin.Calendar:_defaultCalendarId", "");
+            var cType = SettingService.GetSetting(settings, "Dev1.GoogleAdmin.Calendar:_calendarType", "");
+
+            Enum.TryParse(cType, out _calendarType);
+
+            await GetCalendars();
+
+        }
+        catch (Exception ex)
+        {
+            AddModuleMessage(ex.Message, MessageType.Error);
+        }
+    }
+
+    public async Task UpdateSettings()
+    {
+        try
+        {
+            Dictionary<string, string> settings = await SettingService.GetSiteSettingsAsync(ModuleState.SiteId);
+
+            SettingService.SetSetting(settings, "Dev1.GoogleAdmin.Calendar:_defaultCalendarId", _defaultCalendarId);
+            SettingService.SetSetting(settings, "Dev1.GoogleAdmin.Calendar:_calendarType", _calendarType.ToString());
+            await SettingService.UpdateSiteSettingsAsync(settings, ModuleState.SiteId);
+        }
+        catch (Exception ex)
+        {
+            AddModuleMessage(ex.Message, MessageType.Error);
+        }
+    }
+
+    private async Task GetCalendars()
+    {
+        bool forOrganisation;
+
+        //We must always check for null properties as some may have been added after a workflow was created (meaning the workflow will not have the property).
+        //This can happen durin gdevelopment of the Flow Action.
+
+
+        try
+        {
+            string impersonateAccount = null;
+            if (_calendarType == eCalandarType.LoggedInUser)
+                impersonateAccount = PageState.User.Email;
+
+            stateContainer.Calendars = await GoogleCalendarService.GetAvailableGoogleCalendarsAsync(ModuleState.ModuleId,impersonateAccount);
+
+
+        }
+        catch (Google.GoogleApiException ex)
+        {
+            if (ex.HttpStatusCode == System.Net.HttpStatusCode.Unauthorized || ex.HttpStatusCode == System.Net.HttpStatusCode.Forbidden)
+                googleError = "It seems your google login has timed out. Please log out of the system, and log back in.";
+            else
+                googleError = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            AddModuleMessage(ex.Message, MessageType.Error);
+            logger.LogError(ex, "Error Loading Data {Error}", ex.Message);
+            //await OnDataLoaded.InvokeAsync(false);
+        }
+
+
+
+
+    }
+
+    private void SetCalendar(string PropertyValue)
+    {
+        var g = stateContainer.Calendars.Items.Where(x => x.Id == PropertyValue).FirstOrDefault();
+        if (g != null)
+        {
+            _defaultCalendarId = g.Id;
+        }
+        else
+        {
+            logger.LogError("Invalid User Group");
+        }
+
+    }
+}
