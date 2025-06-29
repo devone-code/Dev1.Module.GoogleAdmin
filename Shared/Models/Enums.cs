@@ -36,5 +36,12 @@ namespace Dev1.Module.GoogleAdmin.Models
         AppendEmail
     }
 
+    public enum eGroupRole
+    {
+        OWNER,
+        MANAGER,
+        MEMBER
+    }
+
 }
 

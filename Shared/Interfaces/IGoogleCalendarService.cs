@@ -13,7 +13,7 @@ namespace Dev1.Module.GoogleAdmin.Services
         Task<Calendar> GetGoogleCalendarAsync(int ModuleId, string impersonateAccount);
         Task<Events> GetCalendarEventsAsync(int ModuleId, string calendarId, string impersonateAccount);
         Task<string> ScheduleCalendarEventAsync(int ModuleId, string impersonateAccount, string CalendarId, string Timezone, DateTime StartDate, DateTime EndDate,
-                    string Summary, string Description,
+                    string Summary, 
                     string AttendeeName, string AttendeeEmail);
 
     }

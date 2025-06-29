@@ -12,10 +12,10 @@ namespace Dev1.Module.GoogleAdmin.Models
 
 
 
-    public enum eGroupRole
-    {
-        OWNER,
-        MANAGER,
-        MEMBER
-    }
+    //public enum eGroupRole
+    //{
+    //    OWNER,
+    //    MANAGER,
+    //    MEMBER
+    //}
 }

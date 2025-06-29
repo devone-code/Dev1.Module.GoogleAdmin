@@ -4,9 +4,9 @@ using Google.Apis.Admin.Directory.directory_v1.Data;
 using Google.Apis.Drive.v3.Data;
 using Google.Apis.Calendar.v3.Data;
 
-namespace Dev1.Module.GoogleAdmin.Shared
+namespace Dev1.Module.GoogleAdmin.Services
 {
-    public class StateContainer
+    public class StateContainer : IStateContainer
     {
         private IList<Group> userGroups;
 

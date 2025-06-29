@@ -43,8 +43,8 @@ EG:
 @using NodaTime.TimeZones
 
 @inject IGoogleCalendarService GoogleCalendarService
-@inject Dev1.Module.GoogleAdmin.Shared.StateContainer stateContainer
-
+@* @inject IStateContainer stateContainer
+ *@
 @using Google.Apis.Calendar.v3.Data
 
 
@@ -90,7 +90,7 @@ EG:
 
                     @if (ForProcessing)
                     {
-                        @if (stateContainer.Calendars != null)
+                        @if (Calendars != null)
                         {
                             <div class="form-group mb-3">
                                 <label for="calendars">Select the Calendar</label>
@@ -100,7 +100,7 @@ EG:
                                 <select disabled="@(ForProcessing != CalendarProperty.IsForWorkflow)" id="calendars" class="form-select" aria-label="Select Custom Table"
                                         @bind:get="@CalendarProperty.Value"
                                         @bind:set="@(async (e) => await SetCalendarProperty(e))">
-                                    @foreach (var Calendar in stateContainer.Calendars.Items)
+                                    @foreach (var Calendar in Calendars.Items)
                                     {
                                         if (Calendar.Id == CalendarProperty.Value)
                                         {
@@ -346,7 +346,7 @@ else
 @* Always Pass in a non-null FlowItem (Contained in the base Class). *@
 @code {
     // private IList<Group> userGroups;
-
+    private CalendarList Calendars;
     //private FlowItemProperty OrganisationCalendarProperty;
     private FlowItemProperty CalendarProperty;
     private FlowItemProperty StartDateProperty;
@@ -475,20 +475,20 @@ else
             // }
             // else
             // {
-            if (stateContainer.Calendars == null || stateContainer.Calendars.Items.Count == 1)
+            if (Calendars == null || Calendars.Items.Count == 1)
             {
                 if ((ForProcessing && (WorkflowStatus != (int)eWorkflowStatus.Complete)) || (!ForProcessing && !CalendarProperty.IsForWorkflow))
                 {
                     var calendars = await GoogleCalendarService.GetAvailableGoogleCalendarsAsync(ModuleState.ModuleId, PageState.User.Email);
                     if (calendars != null)
-                        stateContainer.Calendars = calendars;
+                        Calendars = calendars;
 
                 }
             }
 
-            if (stateContainer.Calendars != null && stateContainer.Calendars.Items.Count > 0)
+            if (Calendars != null && Calendars.Items.Count > 0)
             {
-                await SetItemProperty(CalendarProperty, stateContainer.Calendars.Items.First().Id);
+                await SetItemProperty(CalendarProperty, Calendars.Items.First().Id);
             }
 
             // }
@@ -514,7 +514,7 @@ else
 
     private async Task SetCalendarProperty(string PropertyValue)
     {
-        var g = stateContainer.Calendars.Items.Where(x => x.Id == PropertyValue).FirstOrDefault();
+        var g = Calendars.Items.Where(x => x.Id == PropertyValue).FirstOrDefault();
         if (g != null)
         {
             await SetItemProperty(CalendarProperty, g.Id);

@@ -51,7 +51,7 @@ namespace Dev1.Module.GoogleAdmin.Services
             _googleCredentials = googleCredentials;
         }
 
-        public IList<Group> GetDirectoryGroupsAsync(int ModuleId)
+        public async Task<IList<Group>> GetDirectoryGroupsAsync(int ModuleId)
         {
             if (_userPermissions.IsAuthorized(_accessor.HttpContext.User, _alias.SiteId, EntityNames.Module, ModuleId, PermissionNames.View))
             {
@@ -84,7 +84,7 @@ namespace Dev1.Module.GoogleAdmin.Services
                     groupRequest.Domain = domain.SettingValue;
                     groupRequest.Credential = credential;
 
-                    Groups groups = groupRequest.Execute();
+                    Groups groups = await groupRequest.ExecuteAsync();
 
 
                     return groups.GroupsValue;
@@ -144,7 +144,7 @@ namespace Dev1.Module.GoogleAdmin.Services
                     //DeliverySettings = "ALL_MAIL"
                 };
 
-                return directoryService.Members.Insert(member, groupName).Execute();
+                return await directoryService.Members.Insert(member, groupName).ExecuteAsync();
 
             }
             catch(Google.GoogleApiException googleException)

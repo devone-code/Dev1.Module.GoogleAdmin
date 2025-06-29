@@ -31,7 +31,7 @@ namespace Dev1.Module.GoogleAdmin.Startup
             services.AddScoped<IGoogleDirectoryService, ServerGoogleDirectoryService>();
             services.AddScoped<IGoogleDriveService, ServerGoogleDriveService>();
             services.AddScoped<IGoogleCredentials, GoogleCredentials>();
-            services.RegisterFlowServices<ServerStartup>();
+            
 
 
             services.AddRadzenComponents();
@@ -40,7 +40,10 @@ namespace Dev1.Module.GoogleAdmin.Startup
 
             services.AddDbContextFactory<GoogleAdminContext>(opt => { }, ServiceLifetime.Transient);
 
-            services.AddScoped<StateContainer>();
+            services.AddScoped<IStateContainer,StateContainer>();
+
+
+            services.RegisterFlowServices<ServerStartup>();
         }
     }
 }

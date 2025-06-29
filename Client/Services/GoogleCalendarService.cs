@@ -35,11 +35,11 @@ namespace Dev1.Module.GoogleAdmin.Services
         }
 
         public async Task<string> ScheduleCalendarEventAsync(int ModuleId, string impersonateAccount, string CalendarId, string Timezone, DateTime StartDate, DateTime EndDate,
-                            string Summary, string Description,
+                            string Summary,
                             string AttendeeName, string AttendeeEmail)
         { 
 
-        var eventlink = await GetJsonAsync<string>(CreateAuthorizationPolicyUrl($"{Apiurl}/events?ImpersonateAccount={impersonateAccount}&moduleid={ModuleId}&CalendarId={CalendarId}&StartDate={StartDate}&EndDate={EndDate}&Summary={Summary}&Description={Description}&AttendeeName={AttendeeName}&AttendeeEmail={AttendeeEmail}", EntityNames.Module, ModuleId), null);
+        var eventlink = await GetJsonAsync<string>(CreateAuthorizationPolicyUrl($"{Apiurl}/events?ImpersonateAccount={impersonateAccount}&moduleid={ModuleId}&CalendarId={CalendarId}&StartDate={StartDate}&EndDate={EndDate}&Summary={Summary}&AttendeeName={AttendeeName}&AttendeeEmail={AttendeeEmail}", EntityNames.Module, ModuleId), null);
             return eventlink;
             }
 

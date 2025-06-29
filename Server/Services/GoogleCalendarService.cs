@@ -141,7 +141,7 @@ namespace Dev1.Module.GoogleAdmin.Services
 
 
         public async Task<string> ScheduleCalendarEventAsync(int ModuleId, string impersonateAccount, string CalendarId, string Timezone, DateTime StartDate, DateTime EndDate,
-            string Summary, string Description,
+            string Summary, 
             string AttendeeName, string AttendeeEmail
             )
         {
@@ -165,7 +165,7 @@ namespace Dev1.Module.GoogleAdmin.Services
                     ev.Start = start;
                     ev.End = end;
                     ev.Summary = Summary;
-                    ev.Description = Description;
+                    //ev.Description = Description;
                     ev.Attendees = new List<EventAttendee>();
 
                     ev.Attendees.Add(new EventAttendee()

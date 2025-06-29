@@ -7,6 +7,8 @@ using Dev1.Module.Flow.Helpers;
 using System;
 using Dev1.Module.GoogleAdmin.Models;
 using Oqtane.Repository;
+using System.Collections.Generic;
+using System.Linq;
 
 
 //This class, along with the razor view for this Flow Action need the same namespace and Name
@@ -30,6 +32,68 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
             _googleDriveService = googleDriveService;
             _userRepository = userRepository;
         }
+
+        public List<ActionPropertyDefinition> PropertyDefinitions => new List<ActionPropertyDefinition>
+        {
+          new ActionPropertyDefinition
+                {
+                    Name = "Uploaded File Link",
+                    InputTypeId = Convert.ToInt16(eDataType.String),
+                    ForceWorkflow = true,
+                    IsForWorkflow = true,
+                    IsRequired = false
+                },
+
+            new ActionPropertyDefinition
+                {
+                    Name = "File Name",
+                    InputTypeId = Convert.ToInt16(eDataType.String),
+                    ForceWorkflow = true,
+                    IsForWorkflow = true,
+                    IsRequired = false,
+
+                },
+
+            new ActionPropertyDefinition
+                {
+                    Name = "Folder Id",
+                    InputTypeId = Convert.ToInt16(eDataType.String),
+                    ForceWorkflow = false,
+                    IsForWorkflow = false,
+                    IsRequired = true
+                },
+
+            new ActionPropertyDefinition
+                {
+                    Name = "Folder Name",
+                    InputTypeId = Convert.ToInt16(eDataType.String),
+                    ForceWorkflow = false,
+                    IsForWorkflow = false,
+                    IsRequired = false,
+
+                },
+
+            new ActionPropertyDefinition
+                {
+                    Name = "File Data",
+                    InputTypeId = Convert.ToInt16(eDataType.String),
+                    ForceWorkflow = true,
+                    IsForWorkflow = true,
+                    IsRequired = true,
+
+                },
+
+            new ActionPropertyDefinition
+                {
+                    Name = "Default File Name",
+                    InputTypeId = Convert.ToInt16(eDataType.String),
+                    ForceWorkflow = false,
+                    IsForWorkflow = false,
+                    IsRequired = true,
+
+                }
+        };
+
         public async Task ExecuteActionAsync(Workflow Workflow, WorkflowItem WorkflowItem, int SiteId)
         {
             try
@@ -99,6 +163,62 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
             {
                 WorkflowItem.LastResponse = ex.Message;
                 WorkflowItem.Status = (int)eActionStatus.Fail;
+            }
+        }
+
+        public async Task<ActionDataResponse> GetActionDataAsync(string propertyName, Workflow workflow, WorkflowItem workflowItem, int siteId)
+        {
+            try
+            {
+                switch (propertyName)
+                {
+                    case "Folder Id":
+                        var folders = await _googleDriveService.GetFoldersAsync(workflow.ModuleId);
+                        if (folders != null)
+                        {
+                            return new ActionDataResponse
+                            {
+                                Success = true,
+                                Items = folders.Select(f => new ActionDataItem 
+                                { 
+                                    Value = f.Id, 
+                                    Text = f.Name 
+                                }).ToList()
+                            };
+                        }
+                        break;
+
+                    case "Default File Name":
+                        // Return the available default file name options as defined in the enum
+                        var fileNameOptions = Enum.GetValues(typeof(eDefaultFileName))
+                            .Cast<eDefaultFileName>()
+                            .Select(f => f.ToString())
+                            .ToList();
+                        
+                        return new ActionDataResponse
+                        {
+                            Success = true,
+                            Items = fileNameOptions.Select(option => new ActionDataItem 
+                            { 
+                                Value = option, 
+                                Text = option 
+                            }).ToList()
+                        };
+                }
+
+                return new ActionDataResponse
+                {
+                    Success = false,
+                    ErrorMessage = $"Property '{propertyName}' not found or not supported for data retrieval"
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ActionDataResponse
+                {
+                    Success = false,
+                    ErrorMessage = ex.Message
+                };
             }
         }
     }
