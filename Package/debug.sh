@@ -33,5 +33,6 @@ cp -f "../Shared/bin/Debug/net9.0/Google.Apis.Drive.v3.pdb" "../../oqtane.framew
 
 cp -f "../Server/bin/Debug/net9.0/Radzen.Blazor.dll" "../../oqtane.framework/Oqtane.Server/bin/Debug/net9.0/"
 cp -f "../Server/bin/Debug/net9.0/NodaTime.dll" "../../oqtane.framework/Oqtane.Server/bin/Debug/net9.0/"
-
+cp -f "../Server/bin/Debug/net9.0/Dev1.QandA.Core.dll" "../../oqtane.framework/Oqtane.Server/bin/Debug/net9.0/"
+cp -f "../Server/bin/Debug/net9.0/GoogleApi.dll" "../../oqtane.framework/Oqtane.Server/bin/Debug/net9.0/"
 cp -rf "../Server/wwwroot/"* "../../oqtane.framework/Oqtane.Server/wwwroot/"

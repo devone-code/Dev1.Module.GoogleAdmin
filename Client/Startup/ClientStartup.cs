@@ -28,7 +28,7 @@ namespace Dev1.Module.GoogleAdmin.Startup
 
 
             services.AddSingleton<IStateContainer, StateContainer>();
-            services.RegisterFlowServices<ClientStartup>();
+            //services.RegisterFlowServices<ClientStartup>();
         }
     }
 }

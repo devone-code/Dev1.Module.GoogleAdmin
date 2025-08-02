@@ -7,6 +7,8 @@ using Dev1.Module.Flow.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Dev1.Flow.Core.DTOs;
+using Oqtane.Repository;
 
 
 //This class, along with the razor view for this Flow Action need the same namespace and Name
@@ -19,15 +21,21 @@ using System.Linq;
 
 namespace Dev1.Module.GoogleAdmin.GoogleAction
 {
-    [FlowProcessor(serviceLifetime: ServiceLifetime.Scoped)]
+    //[FlowProcessor(serviceLifetime: ServiceLifetime.Scoped)]
     public class AddUserToGoogleGroup : IFlowProcessor
     {
+        public string ActionName => "Add User to Google Group";
+        public string ActionDescription => "Adds a user to the specified Google Group (requires the user processing this item to be logged in via Google).";
+
+        public List<string> ContextRequirements => new List<string>();
+
         private readonly IGoogleDirectoryService _googleDirectoryService;
+        private readonly IUserRepository _userRepository;
 
-
-        public AddUserToGoogleGroup(IGoogleDirectoryService googleDirectoryService)
+        public AddUserToGoogleGroup(IGoogleDirectoryService googleDirectoryService,IUserRepository userRepository)
         {
             _googleDirectoryService = googleDirectoryService;
+            _userRepository = userRepository;
         }
 
         public List<ActionPropertyDefinition> PropertyDefinitions => new List<ActionPropertyDefinition>
@@ -35,7 +43,7 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
             new ActionPropertyDefinition
             {
                     Name = "User Group",
-                    InputTypeId = Convert.ToInt16(eDataType.String),
+                    InputTypeId = Convert.ToInt16(eInputType.List),
                     ForceWorkflow = true,
                     IsForWorkflow = true,
                     IsRequired = true
@@ -45,14 +53,14 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
 
             {
                 Name = "Role",
-                InputTypeId = Convert.ToInt16(eDataType.String),
+                InputTypeId = Convert.ToInt16(eInputType.List),
                 ForceWorkflow = true,
                 IsForWorkflow = true,
                 IsRequired = true
             }
         };
 
-        public async Task ExecuteActionAsync(Workflow Workflow, WorkflowItem WorkflowItem, int SiteId)
+        public async Task ExecuteActionAsync(WorkflowItemDto WorkflowItem, int SiteId, int moduleId, int userId,string ContextName,string ContextEmail)
         {
             try
             {
@@ -70,7 +78,10 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
                 //1 SourceUser: The user who was logged in when this flow was triggered
                 //2 Specific User: Email address
                 //For now, just use the sigend in user (Workflow.CreatedBy).
-                await _googleDirectoryService.AddMemberToGroup(group,Workflow.CreatedBy,role,Workflow.ModuleId);
+                var user = _userRepository.GetUser(userId);
+
+
+                await _googleDirectoryService.AddMemberToGroup(group,user.Email,role,moduleId);
 
                 WorkflowItem.Status = (int)eActionStatus.Pass;
 
@@ -82,14 +93,14 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
             }
         }
 
-        public async Task<ActionDataResponse> GetActionDataAsync(string propertyName, Workflow workflow, WorkflowItem workflowItem, int siteId)
+        public async Task<ActionDataResponse> GetActionDataAsync(string propertyName, int moduleid, int userid, int siteId)
         {
             try
             {
                 switch (propertyName)
                 {
                     case "User Group":
-                        var groups = await _googleDirectoryService.GetDirectoryGroupsAsync(workflow.ModuleId);
+                        var groups = await _googleDirectoryService.GetDirectoryGroupsAsync(moduleid);
                         if (groups != null)
                         {
                             return new ActionDataResponse
@@ -137,5 +148,6 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
                 };
             }
         }
+
     }
 }

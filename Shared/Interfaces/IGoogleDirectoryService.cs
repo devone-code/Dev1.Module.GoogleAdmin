@@ -8,6 +8,6 @@ namespace Dev1.Module.GoogleAdmin.Services
     {
         Task<IList<Group>> GetDirectoryGroupsAsync(int ModuleId);
 
-        Task<Member> AddMemberToGroup(string groupName, string memberEmail, string role,int ModuleId);
+        Task<Member> AddMemberToGroup(string groupName, string memberEmail, string role, int ModuleId);
     }
 }

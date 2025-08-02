@@ -45,6 +45,9 @@
 
 	  <file src="..\Server\bin\Release\net9.0\NodaTime.dll" target="lib\net9.0" />
 
+	  <file src="..\Server\bin\Release\net9.0\Dev1.QandA.Core.dll" target="lib\net9.0" />
+	  <file src="..\Server\bin\Release\net9.0\GoogleApi.dll" target="lib\net9.0" />
+
 	  <file src="..\Server\wwwroot\**\*.*" target="wwwroot" /> 
     <file src="icon.png" target="" />
   </files>

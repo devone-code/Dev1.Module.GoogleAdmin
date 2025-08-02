@@ -9,6 +9,8 @@ using Dev1.Module.GoogleAdmin.Models;
 using Oqtane.Repository;
 using System.Collections.Generic;
 using System.Linq;
+using Dev1.Flow.Core.DTOs;
+using Dev1.Module.Flow.Models;
 
 
 //This class, along with the razor view for this Flow Action need the same namespace and Name
@@ -21,9 +23,14 @@ using System.Linq;
 
 namespace Dev1.Module.GoogleAdmin.GoogleAction
 {
-    [FlowProcessor(serviceLifetime: ServiceLifetime.Scoped)]
+    //[FlowProcessor(serviceLifetime: ServiceLifetime.Scoped)]
     public class UploadFileToGoogleDrive : IFlowProcessor
     {
+        public string ActionName => "Upload file to Google";
+        public string ActionDescription => "Upload to a file to the specified Google Drive Folder (requires the user processing this item to be logged in via Google).";
+
+        public List<string> ContextRequirements => new List<string>();
+
         private readonly IGoogleDriveService _googleDriveService;
 
         private readonly IUserRepository _userRepository;
@@ -35,19 +42,19 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
 
         public List<ActionPropertyDefinition> PropertyDefinitions => new List<ActionPropertyDefinition>
         {
-          new ActionPropertyDefinition
-                {
-                    Name = "Uploaded File Link",
-                    InputTypeId = Convert.ToInt16(eDataType.String),
-                    ForceWorkflow = true,
-                    IsForWorkflow = true,
-                    IsRequired = false
-                },
+          //new ActionPropertyDefinition
+          //      {
+          //          Name = "Uploaded File Link",
+          //          InputTypeId = Convert.ToInt16(eInputType.Text),
+          //          ForceWorkflow = true,
+          //          IsForWorkflow = true,
+          //          IsRequired = false
+          //      },
 
             new ActionPropertyDefinition
                 {
                     Name = "File Name",
-                    InputTypeId = Convert.ToInt16(eDataType.String),
+                    InputTypeId = Convert.ToInt16(eInputType.ExternalFile),
                     ForceWorkflow = true,
                     IsForWorkflow = true,
                     IsRequired = false,
@@ -57,36 +64,36 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
             new ActionPropertyDefinition
                 {
                     Name = "Folder Id",
-                    InputTypeId = Convert.ToInt16(eDataType.String),
+                    InputTypeId = Convert.ToInt16(eInputType.List),
                     ForceWorkflow = false,
                     IsForWorkflow = false,
                     IsRequired = true
                 },
 
-            new ActionPropertyDefinition
-                {
-                    Name = "Folder Name",
-                    InputTypeId = Convert.ToInt16(eDataType.String),
-                    ForceWorkflow = false,
-                    IsForWorkflow = false,
-                    IsRequired = false,
+            //new ActionPropertyDefinition
+            //    {
+            //        Name = "Folder Name",
+            //        InputTypeId = Convert.ToInt16(eDataType.String),
+            //        ForceWorkflow = false,
+            //        IsForWorkflow = false,
+            //        IsRequired = false,
 
-                },
+            //    },
 
-            new ActionPropertyDefinition
-                {
-                    Name = "File Data",
-                    InputTypeId = Convert.ToInt16(eDataType.String),
-                    ForceWorkflow = true,
-                    IsForWorkflow = true,
-                    IsRequired = true,
+            //new ActionPropertyDefinition
+            //    {
+            //        Name = "File Data",
+            //        InputTypeId = Convert.ToInt16(eDataType.String),
+            //        ForceWorkflow = true,
+            //        IsForWorkflow = true,
+            //        IsRequired = true,
 
-                },
+            //    },
 
             new ActionPropertyDefinition
                 {
                     Name = "Default File Name",
-                    InputTypeId = Convert.ToInt16(eDataType.String),
+                    InputTypeId = Convert.ToInt16(eInputType.List),
                     ForceWorkflow = false,
                     IsForWorkflow = false,
                     IsRequired = true,
@@ -94,14 +101,14 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
                 }
         };
 
-        public async Task ExecuteActionAsync(Workflow Workflow, WorkflowItem WorkflowItem, int SiteId)
+        public async Task ExecuteActionAsync(WorkflowItemDto WorkflowItem, int SiteId,int moduleId,int userId, string ContextName, string ContextEmail)
         {
             try
             {
 
                 // Get required properties
                 var fileName = WorkflowHelpers.GetItemPropertyValue(WorkflowItem, "File Name");
-                var fileData = WorkflowHelpers.GetItemPropertyValue(WorkflowItem, "File Data");
+                var fileData = WorkflowHelpers.GetItemPropertyAdditionalData(WorkflowItem, "File Name");
 
                 var folderId = WorkflowHelpers.GetItemPropertyValue(WorkflowItem, "Folder Id");
                 var defaultFileName = WorkflowHelpers.GetItemPropertyValue(WorkflowItem, "Default File Name");
@@ -119,8 +126,11 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
                         }
                     case eDefaultFileName.AppendEmail:
                         {
-
-                            fullFileName = $"{Workflow.CreatedBy}_{fileName}";
+                            var user = _userRepository.GetUser(userId);
+                            if(user != null)
+                                fullFileName = $"{user.Email}_{fileName}";
+                            else
+                                fullFileName = $"{fileName}";
                             break;
                         }
                     case eDefaultFileName.AppendUserName:
@@ -149,7 +159,7 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
                 string contentType = "application/octet-stream"; // You might want to make this configurable
 
                 string result = await _googleDriveService.UploadFileAsync(
-                    Workflow.ModuleId,
+                    moduleId,
                     fullFileName,
                     contentType,
                     fileData,
@@ -166,14 +176,14 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
             }
         }
 
-        public async Task<ActionDataResponse> GetActionDataAsync(string propertyName, Workflow workflow, WorkflowItem workflowItem, int siteId)
+        public async Task<ActionDataResponse> GetActionDataAsync(string propertyName, int moduleid, int userid, int siteId)
         {
             try
             {
                 switch (propertyName)
                 {
                     case "Folder Id":
-                        var folders = await _googleDriveService.GetFoldersAsync(workflow.ModuleId);
+                        var folders = await _googleDriveService.GetFoldersAsync(moduleid);
                         if (folders != null)
                         {
                             return new ActionDataResponse
@@ -221,5 +231,6 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
                 };
             }
         }
+
     }
 }

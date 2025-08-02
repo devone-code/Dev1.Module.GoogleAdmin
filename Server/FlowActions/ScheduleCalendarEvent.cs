@@ -9,6 +9,7 @@ using Oqtane.Repository;
 using System.Collections.Generic;
 using NodaTime.TimeZones;
 using System.Linq;
+using Dev1.Flow.Core.DTOs;
 
 //This class, along with the razor view for this Flow Action need the same namespace and Name
 //For display purposes, the Razor view may contain spaces, flow will remove these when attempting to find the Flow Processor for this action
@@ -20,11 +21,15 @@ using System.Linq;
 
 namespace Dev1.Module.GoogleAdmin.GoogleAction
 {
-    [FlowProcessor(serviceLifetime: ServiceLifetime.Scoped)]
+    //[FlowProcessor(serviceLifetime: ServiceLifetime.Scoped)]
     public class ScheduleCalendarEvent : IFlowProcessor
     {
+        public string ActionName => "Schedule Google Calendar Event";
+        public string ActionDescription => "Schedule a calendar event in Google (requires the user processing this item to be logged in via Google).";
         private readonly IGoogleCalendarService _googleCalendarService;
         private readonly IUserRepository _userRepository;
+
+        public List<string> ContextRequirements => new List<string>();
 
         public ScheduleCalendarEvent(IGoogleCalendarService googleCalendarService,IUserRepository userRepository)
         {
@@ -37,7 +42,7 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
                  new ActionPropertyDefinition
                 {
                     Name = "Organisation Calendar",
-                    InputTypeId = Convert.ToInt16(eDataType.Bool),
+                    InputTypeId = Convert.ToInt16(eInputType.Checkbox),
                     ForceWorkflow = true,
                     IsForWorkflow = true,
                     IsRequired = false
@@ -47,7 +52,7 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
             new ActionPropertyDefinition
                 {
                     Name = "Calendar",
-                    InputTypeId = Convert.ToInt16(eDataType.String),
+                    InputTypeId = Convert.ToInt16(eInputType.List),
                     ForceWorkflow = true,
                     IsForWorkflow = true,
                     IsRequired = true
@@ -57,7 +62,7 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
             new ActionPropertyDefinition
                 {
                     Name = "Timezone",
-                    InputTypeId = Convert.ToInt16(eDataType.String),
+                    InputTypeId = Convert.ToInt16(eInputType.List),
                     ForceWorkflow = true,
                     IsForWorkflow = true,
                     IsRequired = true
@@ -66,7 +71,7 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
             new ActionPropertyDefinition
                 {
                     Name = "Start Date",
-                    InputTypeId = Convert.ToInt16(eDataType.Date),
+                    InputTypeId = Convert.ToInt16(eInputType.Date),
                     ForceWorkflow = true,
                     IsForWorkflow = true,
                     IsRequired = true
@@ -75,7 +80,7 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
             new ActionPropertyDefinition
                 {
                     Name = "End Date",
-                    InputTypeId = Convert.ToInt16(eDataType.Date),
+                    InputTypeId = Convert.ToInt16(eInputType.Date),
                     ForceWorkflow = true,
                     IsForWorkflow = true,
                     IsRequired = true
@@ -84,14 +89,14 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
             new ActionPropertyDefinition
                 {
                     Name = "Summary",
-                    InputTypeId = Convert.ToInt16(eDataType.String),
+                    InputTypeId = Convert.ToInt16(eInputType.Text),
                     ForceWorkflow = false,
                     IsForWorkflow = false,
                     IsRequired = true
                 }
         };
 
-        public async Task ExecuteActionAsync(Workflow Workflow, WorkflowItem WorkflowItem, int SiteId)
+        public async Task ExecuteActionAsync(WorkflowItemDto WorkflowItem, int SiteId, int moduleId, int userId, string ContextName, string ContextEmail)
         {
             try
             {
@@ -121,7 +126,7 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
                 if (!ForOrganisation)
                     impersonateAccount = user.Email;
 
-                await _googleCalendarService.ScheduleCalendarEventAsync(Workflow.Flow.ModuleId, impersonateAccount, 
+                await _googleCalendarService.ScheduleCalendarEventAsync(moduleId, impersonateAccount, 
                     Calendar, Timezone, Convert.ToDateTime(StartDate), Convert.ToDateTime(EndDate), Summary,
                     user.DisplayName, user.Email);
 
@@ -135,14 +140,15 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
             }
         }
 
-        public async Task<ActionDataResponse> GetActionDataAsync(string propertyName, Workflow workflow, WorkflowItem workflowItem, int siteId)
+        public async Task<ActionDataResponse> GetActionDataAsync(string propertyName, int moduleid, int userid, int siteId)
         {
             try
             {
                 switch (propertyName)
                 {
                     case "Calendar":
-                        var calendars = await _googleCalendarService.GetAvailableGoogleCalendarsAsync(workflow.ModuleId, workflow.CreatedBy);
+                        var user = _userRepository.GetUser(userid);
+                        var calendars = await _googleCalendarService.GetAvailableGoogleCalendarsAsync(moduleid, user.Email);
                         if (calendars?.Items != null)
                         {
                             return new ActionDataResponse
@@ -201,5 +207,7 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
                 };
             }
         }
+
+
     }
 }

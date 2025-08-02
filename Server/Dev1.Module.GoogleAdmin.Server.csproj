@@ -23,10 +23,11 @@
     <PackageReference Include="Google.Apis.Admin.Directory.directory_v1" Version="1.69.0.3700" />
     <PackageReference Include="Google.Apis.Calendar.v3" Version="1.69.0.3667" />
     <PackageReference Include="Google.Apis.Drive.v3" Version="1.69.0.3703" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="9.0.3" />
-    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.3" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.3" />
-    <PackageReference Include="Microsoft.Extensions.Localization" Version="9.0.3" />
+    <PackageReference Include="GoogleApi" Version="5.8.8" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="9.0.5" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.5" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.5" />
+    <PackageReference Include="Microsoft.Extensions.Localization" Version="9.0.5" />
     <PackageReference Include="NodaTime" Version="3.2.2" />
     <PackageReference Include="Radzen.Blazor" Version="6.0.1" />
   </ItemGroup>
@@ -41,6 +42,9 @@
     </Reference>
     <Reference Include="Dev1.Module.Flow.Shared.Oqtane">
       <HintPath>..\..\Dev1.Module.Flow\Client\bin\Debug\net9.0\Dev1.Module.Flow.Shared.Oqtane.dll</HintPath>
+    </Reference>
+    <Reference Include="Dev1.QandA.Core">
+      <HintPath>..\..\Dev1.Module.QandA\Dev1.QandA.Core\bin\Debug\net9.0\Dev1.QandA.Core.dll</HintPath>
     </Reference>
     <Reference Include="Oqtane.Server"><HintPath>..\..\oqtane.framework\Oqtane.Server\bin\Debug\net9.0\Oqtane.Server.dll</HintPath></Reference>
     <Reference Include="Oqtane.Shared"><HintPath>..\..\oqtane.framework\Oqtane.Server\bin\Debug\net9.0\Oqtane.Shared.dll</HintPath></Reference>

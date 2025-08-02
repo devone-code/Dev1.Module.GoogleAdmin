@@ -1,12 +1,13 @@
+using Dev1.Flow.Core;
+using Dev1.Module.GoogleAdmin.Repository;
+using Dev1.Module.GoogleAdmin.Services;
+using Dev1.Module.GoogleAdmin.Shared;
+using GoogleApi.Extensions;
 using Microsoft.AspNetCore.Builder; 
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Oqtane.Infrastructure;
-using Dev1.Module.GoogleAdmin.Repository;
-using Dev1.Module.GoogleAdmin.Services;
-using Dev1.Flow.Core;
 using Radzen;
-using Dev1.Module.GoogleAdmin.Shared;
 
 namespace Dev1.Module.GoogleAdmin.Startup
 {
@@ -42,8 +43,11 @@ namespace Dev1.Module.GoogleAdmin.Startup
 
             services.AddScoped<IStateContainer,StateContainer>();
 
+            services
+                .AddGoogleApiClients();
 
-            services.RegisterFlowServices<ServerStartup>();
+
+            //services.RegisterFlowServices<ServerStartup>();
         }
     }
 }

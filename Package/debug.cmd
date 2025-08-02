@@ -33,5 +33,6 @@ XCOPY "..\Server\bin\Debug\net9.0\Google.Apis.Drive.V3.pdb" "..\..\oqtane.framew
 XCOPY "..\Server\bin\Debug\net9.0\Radzen.Blazor.dll" "..\..\oqtane.framework\Oqtane.Server\bin\Debug\net9.0\" /Y
 
 XCOPY "..\Server\bin\Debug\net9.0\NodaTime.dll" "..\..\oqtane.framework\Oqtane.Server\bin\Debug\net9.0\" /Y
-
+XCOPY "..\Server\bin\Debug\net9.0\Dev1.QandA.Core.dll" "..\..\oqtane.framework\Oqtane.Server\bin\Debug\net9.0\" /Y
+XCOPY "..\Server\bin\Debug\net9.0\GoogleApi.dll" "..\..\oqtane.framework\Oqtane.Server\bin\Debug\net9.0\" /Y
 XCOPY "..\Server\wwwroot\*" "..\..\oqtane.framework\Oqtane.Server\wwwroot\" /Y /S /I
