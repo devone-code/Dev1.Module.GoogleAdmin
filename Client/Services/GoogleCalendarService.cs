@@ -1,11 +1,11 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Oqtane.Services;
 using Oqtane.Shared;
+using Google.Apis.Calendar.v3.Data;
+using Dev1.Module.GoogleAdmin.Models;
+using Dev1.Module.GoogleAdmin.Shared.Models;
 
 namespace Dev1.Module.GoogleAdmin.Services
 {
@@ -13,36 +13,108 @@ namespace Dev1.Module.GoogleAdmin.Services
     {
         public GoogleCalendarService(HttpClient http, SiteState siteState) : base(http, siteState) { }
 
-        private string Apiurl => CreateApiUrl("GoogleCalendar");
+        private string ApiUrl => CreateApiUrl("GoogleCalendar");
 
-
-        public async Task<Google.Apis.Calendar.v3.Data.CalendarList> GetAvailableGoogleCalendarsAsync(int ModuleId, string impersonateAccount)
+        public async Task<CalendarAuthInfo> GetCalendarAuthInfoAsync(int moduleId)
         {
-            var calendars = await GetJsonAsync<Google.Apis.Calendar.v3.Data.CalendarList>(CreateAuthorizationPolicyUrl($"{Apiurl}?moduleid={ModuleId}", EntityNames.Module, ModuleId), null);
-            return calendars;
+            return await GetJsonAsync<CalendarAuthInfo>(CreateAuthorizationPolicyUrl($"{ApiUrl}/authinfo?moduleid={moduleId}", EntityNames.Module, moduleId));
         }
 
-        public async Task<Google.Apis.Calendar.v3.Data.Calendar> GetGoogleCalendarAsync(int ModuleId, string impersonateAccount)
+        public async Task<CalendarList> GetAvailableGoogleCalendarsAsync(int moduleId, CalendarAuthMode authMode)
         {
-            var calendar = await GetJsonAsync<Google.Apis.Calendar.v3.Data.Calendar>(CreateAuthorizationPolicyUrl($"{Apiurl}?ImpersonateAccount={impersonateAccount}&moduleid={ModuleId}", EntityNames.Module, ModuleId), null);
-            return calendar;
+            return await GetJsonAsync<CalendarList>(CreateAuthorizationPolicyUrl($"{ApiUrl}/calendars?moduleid={moduleId}&authmode={authMode}", EntityNames.Module, moduleId));
         }
 
-        public async Task<Google.Apis.Calendar.v3.Data.Events> GetCalendarEventsAsync(int ModuleId, string CalendarId, string impersonateAccount)
+        public async Task<Google.Apis.Calendar.v3.Data.Calendar> GetGoogleCalendarAsync(int moduleId, string calendarId, CalendarAuthMode authMode)
         {
-            var events = await GetJsonAsync<Google.Apis.Calendar.v3.Data.Events>(CreateAuthorizationPolicyUrl($"{Apiurl}/events?ImpersonateAccount={impersonateAccount}&CalendarId={CalendarId}&moduleid={ModuleId}", EntityNames.Module, ModuleId), null);
-            return events;
+            return await GetJsonAsync<Google.Apis.Calendar.v3.Data.Calendar>(CreateAuthorizationPolicyUrl($"{ApiUrl}/calendar?moduleid={moduleId}&calendarid={Uri.EscapeDataString(calendarId)}&authmode={authMode}", EntityNames.Module, moduleId));
         }
 
-        public async Task<string> ScheduleCalendarEventAsync(int ModuleId, string impersonateAccount, string CalendarId, string Timezone, DateTime StartDate, DateTime EndDate,
-                            string Summary,
-                            string AttendeeName, string AttendeeEmail)
-        { 
+        public async Task<Events> GetCalendarEventsAsync(int moduleId, string calendarId, CalendarAuthMode authMode)
+        {
+            return await GetJsonAsync<Events>(CreateAuthorizationPolicyUrl($"{ApiUrl}/events?moduleid={moduleId}&calendarid={Uri.EscapeDataString(calendarId)}&authmode={authMode}", EntityNames.Module, moduleId));
+        }
 
-        var eventlink = await GetJsonAsync<string>(CreateAuthorizationPolicyUrl($"{Apiurl}/events?ImpersonateAccount={impersonateAccount}&moduleid={ModuleId}&CalendarId={CalendarId}&StartDate={StartDate}&EndDate={EndDate}&Summary={Summary}&AttendeeName={AttendeeName}&AttendeeEmail={AttendeeEmail}", EntityNames.Module, ModuleId), null);
-            return eventlink;
-            }
+        public async Task<string> ScheduleCalendarEventAsync(int moduleId, string calendarId, CalendarAuthMode authMode,
+            string timezone, DateTime startDate, DateTime endDate, string summary, 
+            string attendeeName, string attendeeEmail)
+        {
+            var eventRequest = new CreateEventRequest
+            {
+                ModuleId = moduleId,
+                CalendarId = calendarId,
+                AuthMode = authMode,
+                Timezone = timezone,
+                StartDate = startDate,
+                EndDate = endDate,
+                Summary = summary,
+                AttendeeName = attendeeName,
+                AttendeeEmail = attendeeEmail
+            };
 
+            var result = await PostJsonAsync(CreateAuthorizationPolicyUrl($"{ApiUrl}/events", EntityNames.Module, moduleId), eventRequest);
+            return result?.ToString() ?? string.Empty;
+        }
 
+        public async Task<string> CreateExtendedCalendarEventAsync(int moduleId, string calendarId, CalendarAuthMode authMode, ExtendedAppointment appointment)
+        {
+            var eventRequest = new ExtendedEventRequest
+            {
+                ModuleId = moduleId,
+                CalendarId = calendarId,
+                AuthMode = authMode,
+                Appointment = appointment
+            };
+
+            var result = await PostJsonAsync(CreateAuthorizationPolicyUrl($"{ApiUrl}/events/extended", EntityNames.Module, moduleId), eventRequest);
+            return result?.ToString() ?? string.Empty;
+        }
+
+        public async Task<string> UpdateCalendarEventAsync(int moduleId, string calendarId, CalendarAuthMode authMode, ExtendedAppointment appointment)
+        {
+            var eventRequest = new ExtendedEventRequest
+            {
+                ModuleId = moduleId,
+                CalendarId = calendarId,
+                AuthMode = authMode,
+                Appointment = appointment
+            };
+
+            var result = await PutJsonAsync(CreateAuthorizationPolicyUrl($"{ApiUrl}/events/extended", EntityNames.Module, moduleId), eventRequest);
+            return result?.ToString() ?? string.Empty;
+        }
+
+        public async Task DeleteCalendarEventAsync(int moduleId, string calendarId, CalendarAuthMode authMode, string eventId)
+        {
+            await DeleteAsync(CreateAuthorizationPolicyUrl($"{ApiUrl}/events?moduleid={moduleId}&calendarid={Uri.EscapeDataString(calendarId)}&authmode={authMode}&eventid={Uri.EscapeDataString(eventId)}", EntityNames.Module, moduleId));
+        }
+
+        // Methods still needed by existing code
+        public async Task<CalendarList> GetAvailableGoogleCalendarsAsync(int moduleId, string impersonateAccount)
+        {
+            var authMode = string.IsNullOrEmpty(impersonateAccount) ? CalendarAuthMode.OrganizationCalendar : CalendarAuthMode.UserCalendar;
+            return await GetAvailableGoogleCalendarsAsync(moduleId, authMode);
+        }
+
+        public async Task<string> ScheduleCalendarEventAsync(int moduleId, string impersonateAccount, string calendarId, 
+            string timezone, DateTime startDate, DateTime endDate, string summary, 
+            string attendeeName, string attendeeEmail)
+        {
+            var authMode = string.IsNullOrEmpty(impersonateAccount) ? CalendarAuthMode.OrganizationCalendar : CalendarAuthMode.UserCalendar;
+            return await ScheduleCalendarEventAsync(moduleId, calendarId, authMode, timezone, startDate, endDate, summary, attendeeName, attendeeEmail);
+        }
+
+        public async Task<string> GetCalendarAccessLevelAsync(int moduleId, string calendarId, CalendarAuthMode authMode)
+        {
+            return await GetJsonAsync<string>(CreateAuthorizationPolicyUrl($"{ApiUrl}/access?moduleid={moduleId}&calendarid={Uri.EscapeDataString(calendarId)}&authmode={authMode}", EntityNames.Module, moduleId));
+        }
+
+        public class ExtendedEventRequest
+        {
+            public int ModuleId { get; set; }
+            public string CalendarId { get; set; }
+            public CalendarAuthMode AuthMode { get; set; }
+            public ExtendedAppointment Appointment { get; set; }
+        }
     }
 }

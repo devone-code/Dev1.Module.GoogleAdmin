@@ -1,1 +1,5 @@
 /* Module Custom Styles */
+
+.rz-dialog-wrapper {
+    z-index: calc(var(--rz-dialog-zindex) + 9000) !important;
+}

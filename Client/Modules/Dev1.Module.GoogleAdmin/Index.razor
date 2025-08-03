@@ -52,10 +52,10 @@ else
 
     public override List<Resource> Resources => new List<Resource>()
     {
-        new Resource { ResourceType = ResourceType.Stylesheet, Url = ModulePath() + "Module.css" },
-        new Resource { ResourceType = ResourceType.Script, Url = ModulePath() + "Module.js" },
         new Resource { ResourceType = ResourceType.Stylesheet, Url = ModulePath() + "Radzen.Blazor/css/" + "default.css" },
         new Resource { ResourceType = ResourceType.Script, Url = ModulePath() + "Radzen.Blazor/" + "Radzen.Blazor.js" },
+        new Resource { ResourceType = ResourceType.Stylesheet, Url = ModulePath() + "Module.css" },
+        new Resource { ResourceType = ResourceType.Script, Url = ModulePath() + "Module.js" },
     };
 
     List<GoogleAdmin> _GoogleAdmins;

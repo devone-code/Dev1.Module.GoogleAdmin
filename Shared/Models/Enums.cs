@@ -15,16 +15,16 @@ namespace Dev1.Module.GoogleAdmin.Models
     }
 
 
-    public enum eCalandarType
-    {
-        [Display(Name = "Organisation")]
-        Organisation,
-        [Display(Name = "Logged in User")]
-        LoggedInUser,
-        [Display(Name = "Custom")]
-        Custom
+    //public enum eCalandarType
+    //{
+    //    [Display(Name = "Organisation")]
+    //    Organisation,
+    //    [Display(Name = "Logged in User")]
+    //    LoggedInUser,
+    //    [Display(Name = "Custom")]
+    //    Custom
 
-    }
+    //}
 
     public enum eDefaultFileName
     {

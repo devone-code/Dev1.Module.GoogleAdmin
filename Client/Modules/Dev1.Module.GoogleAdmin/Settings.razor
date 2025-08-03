@@ -28,13 +28,13 @@
 
 
 
-    <div class="row mb-3 align-items-center">
+@*     <div class="row mb-3 align-items-center">
         <Label Class="col-sm-3" For="calendar" HelpText="This default organisation calendar">Default Calendar: </Label>
         <div class="col-sm-9">
             <input type="text" id="calendar" class="form-control" @bind="@_defaultCalendarId" />
         </div>
 
-    </div>
+    </div> *@
 </div>
 
 @code {
@@ -42,7 +42,7 @@
     public override string Title => "GoogleAdmin Settings";
 
     string _serviceKey;
-    string _defaultCalendarId;
+    //string _defaultCalendarId;
 
     string _adminEmail;
     string _domain;
@@ -54,7 +54,7 @@
         {
             Dictionary<string, string> settings = await SettingService.GetSiteSettingsAsync(ModuleState.SiteId);
             _serviceKey = SettingService.GetSetting(settings, "Dev1.GoogleAdmin:ServiceKey", "");
-            _defaultCalendarId = SettingService.GetSetting(settings, "Dev1.GoogleAdmin:_defaultCalendarId", "");
+            //_defaultCalendarId = SettingService.GetSetting(settings, "Dev1.GoogleAdmin:_defaultCalendarId", "");
             _domain = SettingService.GetSetting(settings, "Dev1.GoogleAdmin:_domain", "");
             _adminEmail = SettingService.GetSetting(settings, "Dev1.GoogleAdmin:_adminEmail", "");
         }
@@ -70,7 +70,7 @@
         {
             Dictionary<string, string> settings = await SettingService.GetSiteSettingsAsync(ModuleState.SiteId);
             SettingService.SetSetting(settings, "Dev1.GoogleAdmin:ServiceKey", _serviceKey,true);
-            SettingService.SetSetting(settings, "Dev1.GoogleAdmin:_defaultCalendarId", _defaultCalendarId);
+            //SettingService.SetSetting(settings, "Dev1.GoogleAdmin:_defaultCalendarId", _defaultCalendarId);
             SettingService.SetSetting(settings, "Dev1.GoogleAdmin:_domain", _domain);
             SettingService.SetSetting(settings, "Dev1.GoogleAdmin:_adminEmail", _adminEmail);
 

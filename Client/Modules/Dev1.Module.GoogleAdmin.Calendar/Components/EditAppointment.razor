@@ -1,0 +1,301 @@
+@namespace Dev1.Module.GoogleAdmin.Calendar
+
+@using Dev1.Module.GoogleAdmin.Shared.Models
+@using Microsoft.AspNetCore.Components.Forms
+@using Radzen
+@using Radzen.Blazor
+@using Dev1.Module.GoogleAdmin.Models
+@using NodaTime.TimeZones
+@using System.ComponentModel.DataAnnotations
+
+@inject DialogService DialogService
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <EditForm Model="@appointment" OnValidSubmit="@Save">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="form-group mb-3">
+                    <Label>Title</Label>
+                    <InputText @bind-Value="appointment.Text" class="form-control" disabled="@ReadOnly" />
+                    <ValidationMessage For="@(() => appointment.Text)" />
+                </div>
+
+                <div class="form-group mb-3">
+                    <Label>Description</Label>
+                    <InputTextArea @bind-Value="appointment.Description" class="form-control" rows="3" disabled="@ReadOnly" />
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <Label>Start Date & Time</Label>
+                            <InputDate Type="InputDateType.DateTimeLocal" @bind-Value="appointment.Start" class="form-control" disabled="@ReadOnly" />
+                            <ValidationMessage For="@(() => appointment.Start)" />
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <Label>End Date & Time</Label>
+                            <InputDate Type="InputDateType.DateTimeLocal" @bind-Value="appointment.End" class="form-control" disabled="@ReadOnly" />
+                            <ValidationMessage For="@(() => appointment.End)" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group mb-3">
+                    <Label>Location</Label>
+                    <InputText @bind-Value="appointment.Location" class="form-control" disabled="@ReadOnly" />
+                </div>
+
+                @if (!ReadOnly)
+                {
+                    <!-- Only show these fields in edit mode -->
+                    <div class="form-group mb-3">
+                        <Label>Time Zone</Label>
+                        <select @bind="appointment.Timezone" class="form-select">
+                            <option value="">-- Select Time Zone --</option>
+                            @foreach (var tz in availableTimezones)
+                            {
+                                <option value="@tz.Value">@tz.Text</option>
+                            }
+                        </select>
+                        <small class="form-text text-muted">Select the time zone for this event</small>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <Label>Attendees</Label>
+                        <InputText @bind-Value="attendeesText" @bind-Value:after="UpdateAttendeesList" class="form-control" placeholder="Enter email addresses separated by commas" />
+                        <small class="form-text text-muted">Separate multiple email addresses with commas</small>
+                        
+                        @if (appointment.AttendeeEmails.Any())
+                        {
+                            <div class="mt-2">
+                                <small class="text-muted">Current attendees:</small>
+                                <div class="d-flex flex-wrap gap-1 mt-1">
+                                    @foreach (var attendee in appointment.AttendeeEmails)
+                                    {
+                                        <span class="badge bg-secondary">
+                                            @attendee
+                                            <button type="button" class="btn-close btn-close-white ms-1" 
+                                                    style="font-size: 0.6em;" 
+                                                    @onclick="() => RemoveAttendee(attendee)"
+                                                    aria-label="Remove attendee"></button>
+                                        </span>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <InputCheckbox @bind-Value="appointment.IsAllDay" class="form-check-input" id="allDayEditCheck" />
+                        <label class="form-check-label" for="allDayEditCheck">
+                            All Day Event
+                        </label>
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="alert alert-danger mb-3">
+                        <strong>Error:</strong> @errorMessage
+                    </div>
+                }
+
+                <div class="d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-secondary" @onclick="Cancel">
+                        @(ReadOnly ? "Close" : "Cancel")
+                    </button>
+                    @if (!ReadOnly)
+                    {
+                        <button type="button" class="btn btn-danger me-auto" @onclick="DeleteEvent">
+                            <i class="oi oi-trash"></i> Delete Event
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            Save Changes
+                        </button>
+                    }
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public ExtendedAppointment Appointment { get; set; }
+    [Parameter] public bool ReadOnly { get; set; } = false; // Add ReadOnly parameter
+
+    private ExtendedAppointment appointment = new();
+    private string errorMessage = "";
+    private string attendeesText = "";
+    
+    private List<TimezoneOption> availableTimezones = new();
+
+    // Update the form fields to be read-only when ReadOnly is true
+    private string FormControlClass => ReadOnly ? "form-control" : "form-control";
+    private bool IsDisabled => ReadOnly;
+    private string DialogTitle => ReadOnly ? "View Event" : "Edit Event";
+
+    protected override void OnInitialized()
+    {
+        // Create a copy to avoid modifying the original until save
+        appointment = new ExtendedAppointment
+        {
+            Start = Appointment.Start,
+            End = Appointment.End,
+            Text = Appointment.Text,
+            Description = Appointment.Description,
+            Location = Appointment.Location,
+            IsAllDay = Appointment.IsAllDay,
+            Timezone = Appointment.Timezone,
+            AttendeeEmails = new List<string>(Appointment.AttendeeEmails),
+            GoogleEventId = Appointment.GoogleEventId
+        };
+
+        // Initialize attendees text
+        attendeesText = string.Join(", ", appointment.AttendeeEmails);
+
+        // Load available timezones
+        LoadTimezones();
+    }
+
+    private void LoadTimezones()
+    {
+        try
+        {
+            var commonTimezones = new List<TimezoneOption>
+            {
+                new TimezoneOption { Value = "UTC", Text = "UTC - Coordinated Universal Time" },
+                new TimezoneOption { Value = "America/New_York", Text = "America/New_York - Eastern Time" },
+                new TimezoneOption { Value = "America/Chicago", Text = "America/Chicago - Central Time" },
+                new TimezoneOption { Value = "America/Denver", Text = "America/Denver - Mountain Time" },
+                new TimezoneOption { Value = "America/Los_Angeles", Text = "America/Los_Angeles - Pacific Time" },
+                new TimezoneOption { Value = "Europe/London", Text = "Europe/London - British Time" },
+                new TimezoneOption { Value = "Europe/Paris", Text = "Europe/Paris - Central European Time" },
+                new TimezoneOption { Value = "Europe/Berlin", Text = "Europe/Berlin - Central European Time" },
+                new TimezoneOption { Value = "Asia/Tokyo", Text = "Asia/Tokyo - Japan Time" },
+                new TimezoneOption { Value = "Asia/Shanghai", Text = "Asia/Shanghai - China Time" },
+                new TimezoneOption { Value = "Asia/Kolkata", Text = "Asia/Kolkata - India Time" },
+            };
+
+            var australianTimezones = TzdbDateTimeZoneSource.Default.ZoneLocations
+                .Where(x => x.CountryCode == "AU")
+                .Select(x => new TimezoneOption 
+                { 
+                    Value = x.ZoneId, 
+                    Text = $"{x.ZoneId} - {GetAustralianTimezoneFriendlyName(x.ZoneId)}"
+                })
+                .OrderBy(x => x.Text)
+                .ToList();
+
+            availableTimezones = commonTimezones.Concat(australianTimezones).ToList();
+        }
+        catch (Exception)
+        {
+            availableTimezones = new List<TimezoneOption>
+            {
+                new TimezoneOption { Value = "UTC", Text = "UTC - Coordinated Universal Time" },
+                new TimezoneOption { Value = "Australia/Sydney", Text = "Australia/Sydney - Sydney Time" },
+            };
+        }
+    }
+
+    private string GetAustralianTimezoneFriendlyName(string zoneId)
+    {
+        return zoneId switch
+        {
+            "Australia/Sydney" => "Sydney Time",
+            "Australia/Melbourne" => "Melbourne Time",
+            "Australia/Brisbane" => "Brisbane Time",
+            "Australia/Perth" => "Perth Time",
+            "Australia/Adelaide" => "Adelaide Time",
+            "Australia/Darwin" => "Darwin Time",
+            "Australia/Hobart" => "Hobart Time",
+            "Australia/Canberra" => "Canberra Time",
+            _ => zoneId.Replace("Australia/", "").Replace("_", " ")
+        };
+    }
+
+    private void UpdateAttendeesList()
+    {
+        if (!string.IsNullOrEmpty(attendeesText))
+        {
+            var emails = attendeesText.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                                     .Select(e => e.Trim())
+                                     .Where(e => e.Contains('@'))
+                                     .Distinct()
+                                     .ToList();
+            
+            appointment.AttendeeEmails = emails;
+        }
+        else
+        {
+            appointment.AttendeeEmails.Clear();
+        }
+    }
+
+    private void RemoveAttendee(string attendeeEmail)
+    {
+        appointment.AttendeeEmails.Remove(attendeeEmail);
+        attendeesText = string.Join(", ", appointment.AttendeeEmails);
+        StateHasChanged();
+    }
+
+    private void Save()
+    {
+        if (ReadOnly) return; // Don't save in read-only mode
+
+        if (string.IsNullOrWhiteSpace(appointment.Text))
+        {
+            errorMessage = "Please enter a title for the event.";
+            return;
+        }
+
+        if (appointment.Start >= appointment.End)
+        {
+            errorMessage = "End time must be after start time.";
+            return;
+        }
+
+        if (string.IsNullOrEmpty(appointment.Timezone))
+        {
+            errorMessage = "Please select a time zone.";
+            return;
+        }
+
+        // Update attendees from text
+        UpdateAttendeesList();
+
+        DialogService.Close(appointment);
+    }
+
+    private async Task DeleteEvent()
+    {
+        if (ReadOnly) return; // Don't delete in read-only mode
+
+        var confirmed = await DialogService.Confirm("Are you sure you want to delete this event?", "Delete Event", new ConfirmOptions 
+        { 
+            OkButtonText = "Delete", 
+            CancelButtonText = "Cancel" 
+        });
+
+        if (confirmed == true)
+        {
+            DialogService.Close("DELETE_EVENT");
+        }
+    }
+
+    private void Cancel()
+    {
+        DialogService.Close(null);
+    }
+
+    public class TimezoneOption
+    {
+        public string Value { get; set; } = "";
+        public string Text { get; set; } = "";
+    }
+}

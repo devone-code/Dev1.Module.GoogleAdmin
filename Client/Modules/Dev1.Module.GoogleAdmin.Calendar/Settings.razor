@@ -1,109 +1,360 @@
-@namespace Dev1.Module.GoogleAdmin.Calendar
+﻿@namespace Dev1.Module.GoogleAdmin.Calendar
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Components.Forms
 @using Radzen
 @using Radzen.Blazor
 @using Dev1.Module.GoogleAdmin.Models
 @using Dev1.Module.GoogleAdmin.Services
+@using Dev1.Module.GoogleAdmin.Shared.Models
 
 @inherits ModuleBase
 
-
 @inject ISettingService SettingService
 @inject IStringLocalizer<Settings> Localizer
-
 @inject IGoogleCalendarService GoogleCalendarService
 @inject IStateContainer stateContainer
 @using Google.Apis.Calendar.v3.Data
 
-
 <div class="container">
     <div class="row mb-1 align-items-center">
-        <Label Class="col-sm-3" For="processor" HelpText="Select the Calendar to show">Calendar Type:</Label>
+        <Label Class="col-sm-3" For="authMode" HelpText="Select authentication mode for calendar access">Authentication Mode:</Label>
         <div class="col-sm-9 mb-4">
-            <InputSelect @bind-Value="@_calendarType" class="form-select">
-
-                @foreach (var type in Enum.GetValues(typeof(eCalandarType)))
-                {
-                    <option value="@type">@type</option>
-                }
+            <InputSelect @bind-Value="@_authMode" @bind-Value:after="OnAuthModeChanged" class="form-select">
+                <option value="@CalendarAuthMode.OrganizationCalendar">Organization Calendar</option>
+                <option value="@CalendarAuthMode.UserCalendar">User Personal Calendar</option>
             </InputSelect>
         </div>
 
-        @if (stateContainer.Calendars != null)
+        @if (_authMode == CalendarAuthMode.OrganizationCalendar)
         {
-            if (_calendarType == eCalandarType.Custom)
+            <Label Class="col-sm-3" For="orgCalendarId" HelpText="Enter the Calendar ID for the organization calendar. This calendar must be shared with your service account.">Organization Calendar ID:</Label>
+            <div class="col-sm-9 mb-4">
+                <input id="orgCalendarId" class="form-control" type="text" 
+                       @bind="@_selectedCalendarId" 
+                       placeholder="example@group.calendar.google.com or calendar@yourdomain.com"
+                       aria-label="Organization Calendar ID" />
+                <div class="form-text">
+                    <small class="text-muted">
+                        <strong>Note:</strong> The calendar must be explicitly shared with your service account email address 
+                        (<code>@serviceAccountEmail</code>) with appropriate permissions.
+                    </small>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(_selectedCalendarId) && !string.IsNullOrEmpty(testCalendarError))
             {
-                <div class="form-group mb-3">
-                    <label for="calendars">Select the Calendar</label>
-                    <select id="calendars" class="form-select" aria-label="Select Custom Table"
-                    @bind:get="@_defaultCalendarId"
-                    @bind:set="e => SetCalendar(e)">
-                        @foreach (var Calendar in stateContainer.Calendars.Items)
+                <div class="col-sm-9 offset-sm-3 mb-4">
+                    <div class="alert alert-warning" role="alert">
+                        <strong>Warning:</strong> @testCalendarError
+                    </div>
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(_selectedCalendarId) && testCalendarSuccess)
+            {
+                <div class="col-sm-9 offset-sm-3 mb-4">
+                    <div class="alert alert-success" role="alert">
+                        <strong>Success:</strong> Calendar access verified successfully!
+                    </div>
+                </div>
+            }
+
+            <div class="col-sm-9 offset-sm-3 mb-4">
+                <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="TestCalendarAccess" 
+                        disabled="@(string.IsNullOrEmpty(_selectedCalendarId) || testingCalendar)">
+                    @if (testingCalendar)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        <span>Testing...</span>
+                    }
+                    else
+                    {
+                        <span>Test Calendar Access</span>
+                    }
+                </button>
+            </div>
+        }
+        else if (_authMode == CalendarAuthMode.UserCalendar)
+        {
+            <div class="col-sm-9 offset-sm-3 mb-4">
+                <div class="alert alert-info" role="alert">
+                    <strong>User Calendar Mode Enabled</strong><br/>
+                    Users will be able to select their personal calendars when viewing the calendar page. 
+                    No additional configuration is required here.
+                </div>
+            </div>
+        }
+
+        <!-- Calendar Display Settings -->
+        <div class="col-sm-12 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Calendar Display Settings</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <Label Class="col-sm-3" For="showHeader" HelpText="Show or hide the calendar header with navigation controls">Show Header:</Label>
+                        <div class="col-sm-9">
+                            <div class="form-check">
+                                <InputCheckbox @bind-Value="@_showHeader" class="form-check-input" id="showHeader" />
+                                <label class="form-check-label" for="showHeader">
+                                    Display calendar header with navigation controls
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <Label Class="col-sm-3" HelpText="Select which calendar views to display to users">Available Views:</Label>
+                        <div class="col-sm-9">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-check mb-2">
+                                        <InputCheckbox @bind-Value="@_showDayView" class="form-check-input" id="showDayView" />
+                                        <label class="form-check-label" for="showDayView">Day View</label>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <InputCheckbox @bind-Value="@_showWeekView" class="form-check-input" id="showWeekView" />
+                                        <label class="form-check-label" for="showWeekView">Week View</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check mb-2">
+                                        <InputCheckbox @bind-Value="@_showMonthView" class="form-check-input" id="showMonthView" />
+                                        <label class="form-check-label" for="showMonthView">Month View</label>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <InputCheckbox @bind-Value="@_showYearView" class="form-check-input" id="showYearView" />
+                                        <label class="form-check-label" for="showYearView">Year View</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check mb-2">
+                                        <InputCheckbox @bind-Value="@_showPlannerView" class="form-check-input" id="showPlannerView" />
+                                        <label class="form-check-label" for="showPlannerView">Planner View</label>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <InputCheckbox @bind-Value="@_showTimelineView" class="form-check-input" id="showTimelineView" />
+                                        <label class="form-check-label" for="showTimelineView">Timeline View</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <small class="form-text text-muted">At least one view must be selected</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Authentication Status Display -->
+        @if (authInfo != null)
+        {
+            <div class="col-sm-12 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0">Authentication Status</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <span class="badge @(authInfo.ServiceAccountAvailable ? "bg-success" : "bg-secondary") me-2">
+                                    Service Account: @(authInfo.ServiceAccountAvailable ? "Available" : "Not Configured")
+                                </span>
+                            </div>
+                            <div class="col-md-6">
+                                <span class="badge @(authInfo.UserGoogleAuthenticated ? "bg-success" : "bg-secondary")">
+                                    Google OAuth: @(authInfo.UserGoogleAuthenticated ? "Authenticated" : "Not Authenticated")
+                                </span>
+                            </div>
+                        </div>
+                        @if (!string.IsNullOrEmpty(authInfo.ErrorMessage))
                         {
-                            if (Calendar.Id == _defaultCalendarId)
-                            {
-                                <option selected="selected" value="@Calendar.Id">@Calendar.Summary</option>
-                            }
-                            else
-                            {
-                                <option value="@Calendar.Id">@Calendar.Summary</option>
-                            }
+                            <div class="mt-2">
+                                <small class="text-muted">@authInfo.ErrorMessage</small>
+                            </div>
                         }
-                    </select>
+                    </div>
                 </div>
-            }
-
+            </div>
         }
-        else
+
+        <!-- Setup Instructions -->
+        @if (_authMode == CalendarAuthMode.OrganizationCalendar && authInfo?.ServiceAccountAvailable == true)
         {
-            if (String.IsNullOrEmpty(googleError))
-            {
-                <div class="spinner-border text-info" role="status">
+            <div class="col-sm-12 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0">Setup Instructions</h6>
+                    </div>
+                    <div class="card-body">
+                        <h6>To use organization calendars:</h6>
+                        <div class="row p-3">
+                        <ol>
+                            <li><strong>Find your calendar ID:</strong>
+                                <ul>
+                                    <li>Go to Google Calendar → Settings → Select your calendar</li>
+                                    <li>Scroll to "Integrate calendar" section</li>
+                                    <li>Copy the <strong>Calendar ID</strong> (usually looks like: <code>calendar@yourdomain.com</code>)</li>
+                                </ul>
+                            </li>
+                            <li><strong>Share the calendar with your service account:</strong>
+                                <ul>
+                                    <li>In Google Calendar, go to calendar Settings → "Share with specific people"</li>
+                                    <li>Add your service account email: <code>@serviceAccountEmail</code></li>
+                                    <li>Give it "Make changes to events" or "Make changes and manage sharing" permission</li>
+                                </ul>
+                            </li>
+                            <li><strong>Enter the Calendar ID above and test the connection</strong></li>
+                        </ol>
+                        </div>
+                    </div>
                 </div>
-            }
-            else
-            {
-                <p>@googleError</p>
-            }
+            </div>
         }
-
-
-
 
     </div>
 </div>
 
 @code {
-    private string resourceType = "Dev1.Module.GoogleAdmin.Settings, Dev1.Module.GoogleAdmin.Client.Oqtane"; // for localization
-    public override string Title => "GoogleAdmin Settings";
+    private string resourceType = "Dev1.Module.GoogleAdmin.Settings, Dev1.Module.GoogleAdmin.Client.Oqtane";
+    public override string Title => "Google Calendar Settings";
 
+    private CalendarAuthMode _authMode = CalendarAuthMode.OrganizationCalendar;
+    private string _selectedCalendarId = "";
+    private bool testingCalendar = false;
+    private string testCalendarError = "";
+    private bool testCalendarSuccess = false;
 
-    string _defaultCalendarId;
+    // Calendar display settings
+    private bool _showHeader = true;
+    private bool _showDayView = true;
+    private bool _showWeekView = true;
+    private bool _showMonthView = true;
+    private bool _showYearView = false;
+    private bool _showPlannerView = false;
+    private bool _showTimelineView = false;
 
-
-    string googleError;
-
-    eCalandarType _calendarType;
-
-
+    private CalendarAuthInfo authInfo;
+    private string serviceAccountEmail = "";
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
+            // Load saved settings
             Dictionary<string, string> settings = await SettingService.GetSiteSettingsAsync(ModuleState.SiteId);
-            _defaultCalendarId = SettingService.GetSetting(settings, "Dev1.GoogleAdmin.Calendar:_defaultCalendarId", "");
-            var cType = SettingService.GetSetting(settings, "Dev1.GoogleAdmin.Calendar:_calendarType", "");
+            _selectedCalendarId = SettingService.GetSetting(settings, "Dev1.GoogleAdmin.Calendar:_defaultCalendarId", "");
+            
+            // Load auth mode (default to Organization if not set)
+            var savedAuthMode = SettingService.GetSetting(settings, "Dev1.GoogleAdmin.Calendar:_authMode", CalendarAuthMode.OrganizationCalendar.ToString());
+            Enum.TryParse(savedAuthMode, out _authMode);
 
-            Enum.TryParse(cType, out _calendarType);
+            // Load display settings
+            _showHeader = bool.Parse(SettingService.GetSetting(settings, "Dev1.GoogleAdmin.Calendar:ShowHeader", "true"));
+            _showDayView = bool.Parse(SettingService.GetSetting(settings, "Dev1.GoogleAdmin.Calendar:ShowDayView", "true"));
+            _showWeekView = bool.Parse(SettingService.GetSetting(settings, "Dev1.GoogleAdmin.Calendar:ShowWeekView", "true"));
+            _showMonthView = bool.Parse(SettingService.GetSetting(settings, "Dev1.GoogleAdmin.Calendar:ShowMonthView", "true"));
+            _showYearView = bool.Parse(SettingService.GetSetting(settings, "Dev1.GoogleAdmin.Calendar:ShowYearView", "false"));
+            _showPlannerView = bool.Parse(SettingService.GetSetting(settings, "Dev1.GoogleAdmin.Calendar:ShowPlannerView", "false"));
+            _showTimelineView = bool.Parse(SettingService.GetSetting(settings, "Dev1.GoogleAdmin.Calendar:ShowTimelineView", "false"));
 
-            await GetCalendars();
+            // Get service account email for display
+            await GetServiceAccountEmail();
 
+            // Get authentication status
+            await GetAuthInfo();
         }
         catch (Exception ex)
         {
-            AddModuleMessage(ex.Message, MessageType.Error);
+            AddModuleMessage($"Error loading settings: {ex.Message}", MessageType.Error);
+            logger.LogError(ex, "Error Loading Calendar Settings {Error}", ex.Message);
+        }
+    }
+
+    private async Task GetServiceAccountEmail()
+    {
+        try
+        {
+            // Get service account email from settings for display purposes
+            Dictionary<string, string> settings = await SettingService.GetSiteSettingsAsync(ModuleState.SiteId);
+            var serviceKeyJson = SettingService.GetSetting(settings, "Dev1.GoogleAdmin:ServiceKey", "");
+            
+            if (!string.IsNullOrEmpty(serviceKeyJson))
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(serviceKeyJson);
+                if (doc.RootElement.TryGetProperty("client_email", out var emailElement))
+                {
+                    serviceAccountEmail = emailElement.GetString() ?? "";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting service account email: {Error}", ex.Message);
+            serviceAccountEmail = "your-service-account@project.iam.gserviceaccount.com";
+        }
+    }
+
+    private async Task GetAuthInfo()
+    {
+        try
+        {
+            authInfo = await GoogleCalendarService.GetCalendarAuthInfoAsync(ModuleState.ModuleId);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting auth info: {Error}", ex.Message);
+        }
+    }
+
+    private async Task OnAuthModeChanged()
+    {
+        // Clear previous selection when auth mode changes
+        _selectedCalendarId = "";
+        testCalendarError = "";
+        testCalendarSuccess = false;
+    }
+
+    private async Task TestCalendarAccess()
+    {
+        if (string.IsNullOrEmpty(_selectedCalendarId))
+            return;
+
+        testingCalendar = true;
+        testCalendarError = "";
+        testCalendarSuccess = false;
+
+        try
+        {
+            // Try to get the calendar details to verify access
+            var calendar = await GoogleCalendarService.GetGoogleCalendarAsync(ModuleState.ModuleId, _selectedCalendarId, CalendarAuthMode.OrganizationCalendar);
+            
+            if (calendar != null)
+            {
+                testCalendarSuccess = true;
+                AddModuleMessage($"Calendar access successful! Found: {calendar.Summary}", MessageType.Success);
+            }
+            else
+            {
+                testCalendarError = "Calendar not found or no access permissions.";
+            }
+        }
+        catch (Google.GoogleApiException ex)
+        {
+            if (ex.HttpStatusCode == System.Net.HttpStatusCode.NotFound)
+                testCalendarError = "Calendar not found. Please check the Calendar ID.";
+            else if (ex.HttpStatusCode == System.Net.HttpStatusCode.Forbidden)
+                testCalendarError = "Access denied. Please ensure the calendar is shared with your service account.";
+            else
+                testCalendarError = $"Google API Error: {ex.Message}";
+        }
+        catch (Exception ex)
+        {
+            testCalendarError = $"Error testing calendar access: {ex.Message}";
+        }
+        finally
+        {
+            testingCalendar = false;
         }
     }
 
@@ -113,64 +364,53 @@
         {
             Dictionary<string, string> settings = await SettingService.GetSiteSettingsAsync(ModuleState.SiteId);
 
-            SettingService.SetSetting(settings, "Dev1.GoogleAdmin.Calendar:_defaultCalendarId", _defaultCalendarId);
-            SettingService.SetSetting(settings, "Dev1.GoogleAdmin.Calendar:_calendarType", _calendarType.ToString());
+            // For Organization mode, require calendar ID
+            if (_authMode == CalendarAuthMode.OrganizationCalendar && string.IsNullOrEmpty(_selectedCalendarId))
+            {
+                AddModuleMessage("Please enter a calendar ID for organization calendar mode.", MessageType.Warning);
+                return;
+            }
+
+            // Validate that at least one view is selected
+            if (!_showDayView && !_showWeekView && !_showMonthView && !_showYearView && !_showPlannerView && !_showTimelineView)
+            {
+                AddModuleMessage("At least one calendar view must be selected.", MessageType.Warning);
+                return;
+            }
+
+            // For User mode, clear the calendar ID since users will select their own
+            if (_authMode == CalendarAuthMode.UserCalendar)
+            {
+                _selectedCalendarId = "";
+            }
+
+            // Save calendar settings
+            SettingService.SetSetting(settings, "Dev1.GoogleAdmin.Calendar:_defaultCalendarId", _selectedCalendarId);
+            SettingService.SetSetting(settings, "Dev1.GoogleAdmin.Calendar:_authMode", _authMode.ToString());
+
+            // Save display settings
+            SettingService.SetSetting(settings, "Dev1.GoogleAdmin.Calendar:ShowHeader", _showHeader.ToString());
+            SettingService.SetSetting(settings, "Dev1.GoogleAdmin.Calendar:ShowDayView", _showDayView.ToString());
+            SettingService.SetSetting(settings, "Dev1.GoogleAdmin.Calendar:ShowWeekView", _showWeekView.ToString());
+            SettingService.SetSetting(settings, "Dev1.GoogleAdmin.Calendar:ShowMonthView", _showMonthView.ToString());
+            SettingService.SetSetting(settings, "Dev1.GoogleAdmin.Calendar:ShowYearView", _showYearView.ToString());
+            SettingService.SetSetting(settings, "Dev1.GoogleAdmin.Calendar:ShowPlannerView", _showPlannerView.ToString());
+            SettingService.SetSetting(settings, "Dev1.GoogleAdmin.Calendar:ShowTimelineView", _showTimelineView.ToString());
+            
             await SettingService.UpdateSiteSettingsAsync(settings, ModuleState.SiteId);
+            
+            AddModuleMessage("Settings saved successfully!", MessageType.Success);
         }
         catch (Exception ex)
         {
-            AddModuleMessage(ex.Message, MessageType.Error);
+            AddModuleMessage($"Error saving settings: {ex.Message}", MessageType.Error);
+            logger.LogError(ex, "Error saving calendar settings: {Error}", ex.Message);
         }
     }
 
-    private async Task GetCalendars()
+    private async Task RefreshAuthInfo()
     {
-        bool forOrganisation;
-
-        //We must always check for null properties as some may have been added after a workflow was created (meaning the workflow will not have the property).
-        //This can happen durin gdevelopment of the Flow Action.
-
-
-        try
-        {
-            string impersonateAccount = null;
-            if (_calendarType == eCalandarType.LoggedInUser)
-                impersonateAccount = PageState.User.Email;
-
-            stateContainer.Calendars = await GoogleCalendarService.GetAvailableGoogleCalendarsAsync(ModuleState.ModuleId,impersonateAccount);
-
-
-        }
-        catch (Google.GoogleApiException ex)
-        {
-            if (ex.HttpStatusCode == System.Net.HttpStatusCode.Unauthorized || ex.HttpStatusCode == System.Net.HttpStatusCode.Forbidden)
-                googleError = "It seems your google login has timed out. Please log out of the system, and log back in.";
-            else
-                googleError = ex.Message;
-        }
-        catch (Exception ex)
-        {
-            AddModuleMessage(ex.Message, MessageType.Error);
-            logger.LogError(ex, "Error Loading Data {Error}", ex.Message);
-            //await OnDataLoaded.InvokeAsync(false);
-        }
-
-
-
-
-    }
-
-    private void SetCalendar(string PropertyValue)
-    {
-        var g = stateContainer.Calendars.Items.Where(x => x.Id == PropertyValue).FirstOrDefault();
-        if (g != null)
-        {
-            _defaultCalendarId = g.Id;
-        }
-        else
-        {
-            logger.LogError("Invalid User Group");
-        }
-
+        await GetAuthInfo();
+        StateHasChanged();
     }
 }

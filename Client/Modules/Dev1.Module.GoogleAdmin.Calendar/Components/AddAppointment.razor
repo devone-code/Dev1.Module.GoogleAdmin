@@ -1,0 +1,354 @@
+@namespace Dev1.Module.GoogleAdmin.Calendar
+
+@using Microsoft.AspNetCore.Components.Forms
+@using Radzen
+@using Radzen.Blazor
+@using Dev1.Module.GoogleAdmin.Models
+@using Dev1.Module.GoogleAdmin.Services
+@using Dev1.Module.GoogleAdmin.Shared.Models
+@using Google.Apis.Calendar.v3.Data
+@using NodaTime.TimeZones
+@using System.ComponentModel.DataAnnotations
+@using Oqtane.Modules
+
+@inherits ModuleBase
+@inject DialogService DialogService
+@inject IGoogleCalendarService GoogleCalendarService
+@inject Radzen.NotificationService NotificationService
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <EditForm Model="@appointment" OnValidSubmit="@Save">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="form-group mb-3">
+                    <Label>Title</Label> 
+                    <InputText @bind-Value="appointment.Text" class="form-control" placeholder="Enter event title" />
+                    <ValidationMessage For="@(() => appointment.Text)" />
+                </div>
+
+                <div class="form-group mb-3">
+                    <Label>Description</Label>
+                    <InputTextArea @bind-Value="appointment.Description" class="form-control" rows="3" placeholder="Enter event description (optional)" />
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <Label>Start Date & Time</Label>
+                            <InputDate Type="InputDateType.DateTimeLocal" @bind-Value="appointment.Start" class="form-control" />
+                            <ValidationMessage For="@(() => appointment.Start)" />
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <Label>End Date & Time</Label>
+                            <InputDate Type="InputDateType.DateTimeLocal" @bind-Value="appointment.End" class="form-control" />
+                            <ValidationMessage For="@(() => appointment.End)" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group mb-3">
+                    <Label>Time Zone</Label>
+                    <select @bind="selectedTimezone" class="form-select" required>
+                        <option value="">-- Select Time Zone --</option>
+                        @foreach (var tz in availableTimezones)
+                        {
+                            <option value="@tz.Value">@tz.Text</option>
+                        }
+                    </select>
+                    <small class="form-text text-muted">Select the time zone for this event</small>
+                    <ValidationMessage For="@(() => selectedTimezone)" />
+                </div>
+
+                <div class="form-group mb-3">
+                    <Label>Location</Label>
+                    <InputText @bind-Value="appointment.Location" class="form-control" placeholder="Enter event location (optional)" />
+                </div>
+
+                <div class="form-group mb-3">
+                    <Label>Attendees</Label>
+                    <InputText @bind-Value="attendeesText" class="form-control" placeholder="Enter email addresses separated by commas" />
+                    <small class="form-text text-muted">Separate multiple email addresses with commas</small>
+                </div>
+
+                <div class="form-check mb-3">
+                    <InputCheckbox @bind-Value="appointment.IsAllDay" class="form-check-input" id="allDayCheck" />
+                    <label class="form-check-label" for="allDayCheck">
+                        All Day Event
+                    </label>
+                </div>
+
+                @if (saving)
+                {
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                        <span>Creating event...</span>
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="alert alert-danger mb-3">
+                        <strong>Error:</strong> @errorMessage
+                        @if (errorMessage.Contains("Forbidden") || errorMessage.Contains("writer access"))
+                        {
+                            <br/><small class="mt-1">
+                                <strong>Tip:</strong> Make sure the calendar is shared with write permissions. 
+                                @if (AuthMode == CalendarAuthMode.OrganizationCalendar)
+                                {
+                                    <span>For organization calendars, share the calendar with your service account email and grant "Make changes to events" permission.</span>
+                                }
+                                else
+                                {
+                                    <span>For personal calendars, ensure you're logged in with Google and have permission to modify this calendar.</span>
+                                }
+                            </small>
+                        }
+                    </div>
+                }
+
+                <div class="d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-secondary" @onclick="Cancel" disabled="@saving">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary" disabled="@saving">
+                        @if (saving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                        }
+                        Create Event
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public DateTime Start { get; set; }
+    [Parameter] public DateTime End { get; set; }
+    [Parameter] public int ModuleId { get; set; }
+    [Parameter] public string CalendarId { get; set; }
+    [Parameter] public CalendarAuthMode AuthMode { get; set; }
+
+    private ExtendedAppointment appointment = new();
+    private string attendeesText = "";
+    private List<string> attendeesList = new();
+    private bool saving = false;
+    private string errorMessage = "";
+    
+    [Required(ErrorMessage = "Please select a time zone")]
+    private string selectedTimezone = "";
+    
+    private List<TimezoneOption> availableTimezones = new();
+
+    protected override void OnInitialized()
+    {
+        appointment.Start = Start;
+        appointment.End = End;
+        
+        // If it's a short time slot (less than 1 hour), make it 1 hour
+        if ((appointment.End - appointment.Start).TotalMinutes < 60)
+        {
+            appointment.End = appointment.Start.AddHours(1);
+        }
+
+        // Load available timezones
+        LoadTimezones();
+        
+        // Set default timezone to user's local timezone equivalent
+        SetDefaultTimezone();
+    }
+
+    private void LoadTimezones()
+    {
+        try
+        {
+            // Get common timezones from NodaTime (same as used in FlowAction)
+            var commonTimezones = new List<TimezoneOption>
+            {
+                // Major world timezones
+                new TimezoneOption { Value = "UTC", Text = "UTC - Coordinated Universal Time" },
+                new TimezoneOption { Value = "America/New_York", Text = "America/New_York - Eastern Time" },
+                new TimezoneOption { Value = "America/Chicago", Text = "America/Chicago - Central Time" },
+                new TimezoneOption { Value = "America/Denver", Text = "America/Denver - Mountain Time" },
+                new TimezoneOption { Value = "America/Los_Angeles", Text = "America/Los_Angeles - Pacific Time" },
+                new TimezoneOption { Value = "Europe/London", Text = "Europe/London - British Time" },
+                new TimezoneOption { Value = "Europe/Paris", Text = "Europe/Paris - Central European Time" },
+                new TimezoneOption { Value = "Europe/Berlin", Text = "Europe/Berlin - Central European Time" },
+                new TimezoneOption { Value = "Asia/Tokyo", Text = "Asia/Tokyo - Japan Time" },
+                new TimezoneOption { Value = "Asia/Shanghai", Text = "Asia/Shanghai - China Time" },
+                new TimezoneOption { Value = "Asia/Kolkata", Text = "Asia/Kolkata - India Time" },
+            };
+
+            // Add Australian timezones (from FlowAction)
+            var australianTimezones = TzdbDateTimeZoneSource.Default.ZoneLocations
+                .Where(x => x.CountryCode == "AU")
+                .Select(x => new TimezoneOption 
+                { 
+                    Value = x.ZoneId, 
+                    Text = $"{x.ZoneId} - {GetAustralianTimezoneFriendlyName(x.ZoneId)}"
+                })
+                .OrderBy(x => x.Text)
+                .ToList();
+
+            // Combine all timezones
+            availableTimezones = commonTimezones.Concat(australianTimezones).ToList();
+        }
+        catch (Exception ex)
+        {
+            // Fallback to basic timezones if NodaTime fails
+            availableTimezones = new List<TimezoneOption>
+            {
+                new TimezoneOption { Value = "UTC", Text = "UTC - Coordinated Universal Time" },
+                new TimezoneOption { Value = "Australia/Sydney", Text = "Australia/Sydney - Sydney Time" },
+                new TimezoneOption { Value = "Australia/Melbourne", Text = "Australia/Melbourne - Melbourne Time" },
+                new TimezoneOption { Value = "Australia/Brisbane", Text = "Australia/Brisbane - Brisbane Time" },
+                new TimezoneOption { Value = "Australia/Perth", Text = "Australia/Perth - Perth Time" },
+                new TimezoneOption { Value = "Australia/Adelaide", Text = "Australia/Adelaide - Adelaide Time" },
+            };
+        }
+    }
+
+    private string GetAustralianTimezoneFriendlyName(string zoneId)
+    {
+        // Map zone IDs to friendly names
+        return zoneId switch
+        {
+            "Australia/Sydney" => "Sydney Time",
+            "Australia/Melbourne" => "Melbourne Time",
+            "Australia/Brisbane" => "Brisbane Time",
+            "Australia/Perth" => "Perth Time",
+            "Australia/Adelaide" => "Adelaide Time",
+            "Australia/Darwin" => "Darwin Time",
+            "Australia/Hobart" => "Hobart Time",
+            "Australia/Canberra" => "Canberra Time",
+            _ => zoneId.Replace("Australia/", "").Replace("_", " ")
+        };
+    }
+
+    private void SetDefaultTimezone()
+    {
+        try
+        {
+            // Try to map the local timezone to an IANA timezone
+            var localTimeZone = TimeZoneInfo.Local;
+            
+            // Common mappings from Windows to IANA timezones
+            var windowsToIana = new Dictionary<string, string>
+            {
+                { "AUS Eastern Standard Time", "Australia/Sydney" },
+                { "AUS Central Standard Time", "Australia/Adelaide" },
+                { "W. Australia Standard Time", "Australia/Perth" },
+                { "Tasmania Standard Time", "Australia/Hobart" },
+                { "Central Standard Time", "America/Chicago" },
+                { "Eastern Standard Time", "America/New_York" },
+                { "Pacific Standard Time", "America/Los_Angeles" },
+                { "Mountain Standard Time", "America/Denver" },
+                { "GMT Standard Time", "Europe/London" },
+                { "Central Europe Standard Time", "Europe/Berlin" },
+                { "UTC", "UTC" }
+            };
+
+            if (windowsToIana.TryGetValue(localTimeZone.Id, out var ianaId))
+            {
+                selectedTimezone = ianaId;
+            }
+            else
+            {
+                // Default to Australia/Sydney if can't determine
+                selectedTimezone = "Australia/Sydney";
+            }
+        }
+        catch
+        {
+            selectedTimezone = "Australia/Sydney";
+        }
+    }
+
+    private void UpdateAttendeesList()
+    {
+        if (!string.IsNullOrEmpty(attendeesText))
+        {
+            attendeesList = attendeesText.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                                        .Select(e => e.Trim())
+                                        .Where(e => e.Contains('@'))
+                                        .Distinct()
+                                        .ToList();
+        }
+        else
+        {
+            attendeesList.Clear();
+        }
+    }
+
+    private async Task Save()
+    {
+        if (string.IsNullOrWhiteSpace(appointment.Text))
+        {
+            errorMessage = "Please enter a title for the event.";
+            return;
+        }
+
+        if (appointment.Start >= appointment.End)
+        {
+            errorMessage = "End time must be after start time.";
+            return;
+        }
+
+        if (string.IsNullOrEmpty(selectedTimezone))
+        {
+            errorMessage = "Please select a time zone.";
+            return;
+        }
+
+        saving = true;
+        errorMessage = "";
+
+        try
+        {
+            // Update attendees list from the text input
+            UpdateAttendeesList();
+
+            // Update the appointment object with all the properties
+            appointment.Timezone = selectedTimezone;
+            appointment.AttendeeEmails = attendeesList;
+
+            // Use the new extended method
+            var eventId = await GoogleCalendarService.CreateExtendedCalendarEventAsync(
+                ModuleId,
+                CalendarId,
+                AuthMode,
+                appointment
+            );
+
+            // Set the Google Event ID for future updates
+            appointment.GoogleEventId = eventId;
+
+            DialogService.Close(appointment);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to create event: {ex.Message}";
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        DialogService.Close(null);
+    }
+
+    public class TimezoneOption
+    {
+        public string Value { get; set; } = "";
+        public string Text { get; set; } = "";
+    }
+}

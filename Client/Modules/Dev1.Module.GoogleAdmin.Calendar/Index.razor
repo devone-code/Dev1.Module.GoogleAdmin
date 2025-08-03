@@ -1,6 +1,7 @@
 @using Dev1.Module.GoogleAdmin.Models
 @using Dev1.Module.GoogleAdmin.Services
 @using Dev1.Module.GoogleAdmin.Shared.Models
+
 @using Radzen
 @using Radzen.Blazor
 @using Google.Apis.Calendar.v3.Data
@@ -11,168 +12,481 @@
 @inject IStringLocalizer<Index> Localizer
 @inject DialogService DialogService
 @inject ISettingService SettingService
+@inject Radzen.NotificationService NotificationService
 
 <RadzenDialog />
 <RadzenNotification />
 
 @if (loading)
 {
-    <p><em>Loading...</em></p>
+    <div class="text-center">
+        <div class="spinner-border text-primary" role="status">
+        </div>
+        <p class="mt-2"><em>Loading calendar...</em></p>
+    </div>
+}
+else if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger" role="alert">
+        <h5 class="alert-heading">Calendar Configuration Error</h5>
+        <p>@errorMessage</p>
+    </div>
 }
 else
 {
-    @*     if (scheduler != null)
-    { *@
-    <h4>GOOGLE Calendar</h4>
-    @* <p>Calendar Description = @_calendar.Description</p> *@
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-primary btn-sm" @onclick="RefreshCalendar">
+                Refresh
+            </button>
+        </div>
+    </div>
 
-    <RadzenScheduler @ref=@scheduler SlotRender=@OnSlotRender style="height: 768px;" TItem="Appointment" Data=@appointments StartProperty="Start" EndProperty="End" ShowHeader=@true
-    TextProperty="Text" SelectedIndex="2"
-    SlotSelect=@OnSlotSelect AppointmentSelect=@OnAppointmentSelect AppointmentRender=@OnAppointmentRender
-    AppointmentMove=@OnAppointmentMove>
-        <RadzenDayView />
-        <RadzenWeekView />
-        <RadzenMonthView />
-    </RadzenScheduler>
-    @*   } *@
-
-    @* <ActionLink Action="Add" Security="SecurityAccessLevel.Edit" Text="Add GoogleAdmin" ResourceKey="Add" /> *@
-    <br />
-    <br />
-    @*     @if (@_GoogleAdmins.Count != 0)
+    <!-- User Calendar Selection (only shown for UserCalendar mode) -->
+    @if (_authMode == CalendarAuthMode.UserCalendar)
     {
-        <Pager Items="@_GoogleAdmins">
-            <Header>
-                <th style="width: 1px;">&nbsp;</th>
-                <th style="width: 1px;">&nbsp;</th>
-                <th>@Localizer["Name"]</th>
-            </Header>
-            <Row>
-                <td><ActionLink Action="Edit" Parameters="@($"id=" + context.GoogleAdminId.ToString())" ResourceKey="Edit"  /></td>
-                <td><ActionDialog Header="Delete GoogleAdmin" Message="Are You Sure You Wish To Delete This GoogleAdmin?" Action="Delete" Security="SecurityAccessLevel.Edit" Class="btn btn-danger" OnClick="@(async () => await Delete(context))" ResourceKey="Delete"  Id="@context.GoogleAdminId.ToString()" /></td>
-                <td>@context.Name</td>
-            </Row>
-        </Pager>
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-4">
+                        <Label>Select Your Calendar:</Label>
+                    </div>
+                    <div class="col-md-6">
+                        @if (loadingUserCalendars)
+                        {
+                            <div class="d-flex align-items-center">
+                                <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                                <span>Loading your calendars...</span>
+                            </div>
+                        }
+                        else if (userCalendars != null && userCalendars.Any())
+                        {
+                            <select @bind="_selectedUserCalendarId" @bind:after="OnUserCalendarChanged" class="form-select">
+                                <option value="">-- Select Calendar --</option>
+                                @foreach (var calendar in userCalendars)
+                                {
+                                    <option value="@calendar.Id">@calendar.Summary</option>
+                                }
+                            </select>
+                            @if (autoSelectedCalendar)
+                            {
+                                <small class="form-text text-muted mt-1">
+                                    <i class="oi oi-check text-success"></i> Auto-selected calendar matching your email
+                                </small>
+                            }
+                        }
+                        else if (!string.IsNullOrEmpty(userCalendarError))
+                        {
+                            <div class="text-danger">
+                                <small>@userCalendarError</small>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-muted">
+                                <small>No calendars available. Please ensure you're logged in with Google.</small>
+                            </div>
+                        }
+                    </div>
+                    <div class="col-md-2">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="RefreshUserCalendars"
+                                disabled="@loadingUserCalendars">
+                            <i class="oi oi-reload"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     }
-    else
+
+    <RadzenScheduler @ref=@scheduler
+                     SlotRender=@OnSlotRender
+                     style="height: 768px;"
+                     TItem="ExtendedAppointment"
+                     Data=@appointments
+                     StartProperty="Start"
+                     EndProperty="End"
+                     ShowHeader=@_showHeader
+                     TextProperty="Text"
+                     SelectedIndex="0"
+                     SlotSelect=@OnSlotSelect
+                     AppointmentSelect=@OnAppointmentSelect
+                     AppointmentRender=@OnAppointmentRender
+                     AppointmentMove=@OnAppointmentMove>
+        @if (_showDayView)
+        {
+            <RadzenDayView />
+        }
+        @if (_showWeekView)
+        {
+            <RadzenWeekView />
+        }
+        @if (_showMonthView)
+        {
+            <RadzenMonthView />
+        }
+        @if (_showYearView)
+        {
+            <RadzenYearView />
+        }
+        @if (_showPlannerView)
+        {
+            <RadzenYearPlannerView />
+        }
+        @if (_showTimelineView)
+        {
+            <RadzenYearTimelineView />
+        }
+    </RadzenScheduler>
+
+    @if (appointments?.Count == 0 && !string.IsNullOrEmpty(_calendarId))
     {
-        <p>@Localizer["Message.DisplayNone"]</p>
-    } *@
+        <div class="text-center mt-4">
+            <p class="text-muted">No events found. Click on a time slot to create your first event!</p>
+        </div>
+    }
+    else if (string.IsNullOrEmpty(_calendarId) && _authMode == CalendarAuthMode.UserCalendar)
+    {
+        <div class="text-center mt-4">
+            <p class="text-muted">Please select a calendar above to view and manage events.</p>
+        </div>
+    }
 }
 
 @code {
+    RadzenScheduler<ExtendedAppointment> scheduler;
 
-    RadzenScheduler<Appointment> scheduler;
+    private bool loading = true;
+    private string errorMessage = "";
+    private string calendarInfo = "";
+    private string userCalendarError = "";
+    private bool loadingUserCalendars = false;
+    private bool autoSelectedCalendar = false;
+    private string calendarAccessLevel = "none";
+    private bool hasWriteAccess => calendarAccessLevel == "writer" || calendarAccessLevel == "owner";
 
-    // public override string RenderMode => RenderModes.Interactive;
+    private CalendarAuthMode _authMode = CalendarAuthMode.OrganizationCalendar;
+    private string _calendarId = "";
+    private string _selectedUserCalendarId = "";
+    private List<CalendarListEntry> userCalendars = new();
 
-    private bool loading;
-
-    //IList<Google.Apis.Calendar.v3.Data.Event> eventItems;
-
-    eCalandarType _calendarType;
-    string _organisationCalendarId;
-    string _calendarId;
-
+    // Calendar display settings
+    private bool _showHeader = true;
+    private bool _showDayView = true;
+    private bool _showWeekView = true;
+    private bool _showMonthView = true;
+    private bool _showYearView = false;
+    private bool _showPlannerView = false;
+    private bool _showTimelineView = false;
 
     public override List<Resource> Resources => new List<Resource>()
     {
-        new Resource { ResourceType = ResourceType.Stylesheet, Url = ModulePath() + "Module.css" },
-        new Resource { ResourceType = ResourceType.Script, Url = ModulePath() + "Module.js" },
         new Resource { ResourceType = ResourceType.Stylesheet, Url = ModulePath() + "Radzen.Blazor/css/" + "default.css" },
         new Resource { ResourceType = ResourceType.Script, Url = ModulePath() + "Radzen.Blazor/" + "Radzen.Blazor.js" },
+        new Resource { ResourceType = ResourceType.Stylesheet, Url = ModulePath() + "Module.css" },
+        new Resource { ResourceType = ResourceType.Script, Url = ModulePath() + "Module.js" }
     };
 
-    Google.Apis.Calendar.v3.Data.Calendar _calendar;
-
-
-
-
-    IList<Appointment> appointments = new List<Appointment>();
-    //                                 {
-    //                                     new Appointment { Start = DateTime.Today.AddDays(-2), End = DateTime.Today.AddDays(-2), Text = "Birthday" },
-    //                                     new Appointment { Start = DateTime.Today.AddDays(-11), End = DateTime.Today.AddDays(-10), Text = "Day off" },
-    //                                     new Appointment { Start = DateTime.Today.AddDays(-10), End = DateTime.Today.AddDays(-8), Text = "Work from home" },
-    //                                     new Appointment { Start = DateTime.Today.AddHours(10), End = DateTime.Today.AddHours(12), Text = "Online meeting" },
-    //                                     new Appointment { Start = DateTime.Today.AddHours(10), End = DateTime.Today.AddHours(13), Text = "Skype call" },
-    //                                     new Appointment { Start = DateTime.Today.AddHours(14), End = DateTime.Today.AddHours(14).AddMinutes(30), Text = "Dentist appointment" },
-    //                                     new Appointment { Start = DateTime.Today.AddDays(1), End = DateTime.Today.AddDays(12), Text = "Vacation" },
-    //                                 };
-
-
+    IList<ExtendedAppointment> appointments = new List<ExtendedAppointment>();
 
     protected override async Task OnInitializedAsync()
+    {
+        await LoadCalendarData();
+    }
+
+    private async Task LoadCalendarData()
     {
         try
         {
             loading = true;
+            errorMessage = "";
 
+            // Load settings
             Dictionary<string, string> settings = await SettingService.GetSiteSettingsAsync(ModuleState.SiteId);
 
-            var cType = SettingService.GetSetting(settings, "Dev1.GoogleAdmin.Calendar:_calendarType", "");
+            var savedAuthMode = SettingService.GetSetting(settings, "Dev1.GoogleAdmin.Calendar:_authMode", CalendarAuthMode.OrganizationCalendar.ToString());
+            Enum.TryParse(savedAuthMode, out _authMode);
 
-            Enum.TryParse(cType, out _calendarType);
+            // Load display settings
+            _showHeader = bool.Parse(SettingService.GetSetting(settings, "Dev1.GoogleAdmin.Calendar:ShowHeader", "true"));
+            _showDayView = bool.Parse(SettingService.GetSetting(settings, "Dev1.GoogleAdmin.Calendar:ShowDayView", "true"));
+            _showWeekView = bool.Parse(SettingService.GetSetting(settings, "Dev1.GoogleAdmin.Calendar:ShowWeekView", "true"));
+            _showMonthView = bool.Parse(SettingService.GetSetting(settings, "Dev1.GoogleAdmin.Calendar:ShowMonthView", "true"));
+            _showYearView = bool.Parse(SettingService.GetSetting(settings, "Dev1.GoogleAdmin.Calendar:ShowYearView", "false"));
+            _showPlannerView = bool.Parse(SettingService.GetSetting(settings, "Dev1.GoogleAdmin.Calendar:ShowPlannerView", "false"));
+            _showTimelineView = bool.Parse(SettingService.GetSetting(settings, "Dev1.GoogleAdmin.Calendar:ShowTimelineView", "false"));
 
-            bool forOrganisation = false;
-
-            switch(_calendarType){
-                case eCalandarType.Organisation:
-                    {
-                        _calendarId = SettingService.GetSetting(settings, "Dev1.GoogleAdmin:_defaultCalendarId", "");
-                        forOrganisation = true;
-                        break;
-                    }
-                case eCalandarType.LoggedInUser:
-                    {
-                        _calendarId = PageState.User.Email;
-                        break;
-                    }
-                case eCalandarType.Custom:
-                    {
-                        _calendarId = SettingService.GetSetting(settings, "Dev1.GoogleAdmin.Calendar:_defaultCalendarId", "");
-                        break;
-                    }
-
-            }
-
-
-            string impersonateAccount = null;
-            if (!forOrganisation)
-                impersonateAccount = PageState.User.Email;
-
-            var events = await GoogleCalendarService.GetCalendarEventsAsync(ModuleState.ModuleId, _calendarId,impersonateAccount);
-            //eventItems = events.Items;           
-            appointments = new List<Appointment>();
-            foreach (var calEvent in events.Items)
+            if (_authMode == CalendarAuthMode.OrganizationCalendar)
             {
-                Appointment appointment = new Appointment();
-                if (calEvent.Start.DateTime != null)
-                {
-                    appointment.Start = (DateTime)calEvent.Start.DateTime;
-                }
-                if (calEvent.End.DateTime != null)
-                {
-                    appointment.End = (DateTime)calEvent.End.DateTime;
-                }
-                appointment.Text = ((MarkupString)calEvent.Summary).ToString();
+                _calendarId = SettingService.GetSetting(settings, "Dev1.GoogleAdmin.Calendar:_defaultCalendarId", "");
 
-                appointments.Add(appointment);
+                if (string.IsNullOrEmpty(_calendarId))
+                {
+                    errorMessage = "No organization calendar configured. Please configure your calendar settings first.";
+                    return;
+                }
+
+                calendarInfo = $"Organization Calendar: {_calendarId}";
+                await LoadEventsForCalendar();
+            }
+            else if (_authMode == CalendarAuthMode.UserCalendar)
+            {
+                // Load user calendars for selection
+                await LoadUserCalendars();
+
+                // Don't load events yet - wait for user to select a calendar (or auto-select)
+                if (string.IsNullOrEmpty(_selectedUserCalendarId))
+                {
+                    calendarInfo = "User Calendar Mode - Select a calendar above";
+                }
             }
 
             loading = false;
         }
         catch (Exception ex)
         {
-            await logger.LogError(ex, "Error Loading GoogleAdmin {Error}", ex.Message);
-            AddModuleMessage(Localizer["Message.LoadError"], MessageType.Error);
+            loading = false;
+            errorMessage = $"Error loading calendar: {ex.Message}";
+            await logger.LogError(ex, "Error Loading Google Calendar {Error}", ex.Message);
         }
     }
 
+    private async Task LoadUserCalendars()
+    {
+        loadingUserCalendars = true;
+        userCalendarError = "";
+        autoSelectedCalendar = false;
 
+        try
+        {
+            // Check OAuth authentication first
+            var authInfo = await GoogleCalendarService.GetCalendarAuthInfoAsync(ModuleState.ModuleId);
+            if (!authInfo.UserGoogleAuthenticated)
+            {
+                userCalendarError = "You must sign into this website using Google to view your calendars";
+                return;
+            }
 
+            var calendarList = await GoogleCalendarService.GetAvailableGoogleCalendarsAsync(ModuleState.ModuleId, CalendarAuthMode.UserCalendar);
+            userCalendars = calendarList?.Items?.ToList() ?? new List<CalendarListEntry>();
 
+            if (!userCalendars.Any())
+            {
+                userCalendarError = "No calendars found. Please ensure you're logged in with Google.";
+                return;
+            }
 
+            // Auto-select calendar that matches logged-in user's email
+            await TryAutoSelectUserCalendar();
+        }
+        catch (Google.GoogleApiException ex)
+        {
+            if (ex.HttpStatusCode == System.Net.HttpStatusCode.Unauthorized || ex.HttpStatusCode == System.Net.HttpStatusCode.Forbidden)
+                userCalendarError = "You must sign into this website using Google to view your calendars";
+            else
+                userCalendarError = $"Error: {ex.Message}";
+        }
+        catch (Exception ex)
+        {
+            userCalendarError = $"Error loading calendars: {ex.Message}";
+        }
+        finally
+        {
+            loadingUserCalendars = false;
+        }
+    }
 
+    private async Task TryAutoSelectUserCalendar()
+    {
+        if (!userCalendars.Any() || PageState?.User?.Email == null)
+            return;
+
+        var userEmail = PageState.User.Email.ToLowerInvariant();
+
+        var matchingCalendar = userCalendars.FirstOrDefault(c =>
+            c.Id?.ToLowerInvariant() == userEmail ||
+            c.Primary == true ||
+            (!string.IsNullOrEmpty(c.Summary) &&
+             (c.Summary.ToLowerInvariant().Contains(userEmail) ||
+              c.Summary.ToLowerInvariant().Contains(PageState.User.DisplayName?.ToLowerInvariant() ?? "")))
+        );
+
+        if (matchingCalendar == null)
+        {
+            matchingCalendar = userCalendars.FirstOrDefault(c => c.Primary == true) ??
+                              userCalendars.FirstOrDefault();
+        }
+
+        if (matchingCalendar != null)
+        {
+            _selectedUserCalendarId = matchingCalendar.Id;
+            autoSelectedCalendar = true;
+
+            await OnUserCalendarChanged();
+
+            await logger.LogInformation("Auto-selected calendar {CalendarId} for user {UserEmail}",
+                matchingCalendar.Id, userEmail);
+        }
+    }
+
+    private async Task OnUserCalendarChanged()
+    {
+        if (!string.IsNullOrEmpty(_selectedUserCalendarId))
+        {
+            _calendarId = _selectedUserCalendarId;
+
+            var selectedCalendar = userCalendars.FirstOrDefault(c => c.Id == _selectedUserCalendarId);
+            calendarInfo = selectedCalendar != null ? $"Personal Calendar: {selectedCalendar.Summary}" : "Personal Calendar";
+
+            // Check calendar permissions
+            await CheckCalendarPermissions();
+
+            await LoadEventsForCalendar();
+
+            if (scheduler != null)
+            {
+                await scheduler.Reload();
+            }
+            StateHasChanged();
+        }
+        else
+        {
+            _calendarId = "";
+            calendarAccessLevel = "none";
+            appointments.Clear();
+            calendarInfo = "User Calendar Mode - Select a calendar above";
+            autoSelectedCalendar = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadEventsForCalendar()
+    {
+        if (string.IsNullOrEmpty(_calendarId))
+            return;
+
+        try
+        {
+            // For organization calendars, also check user permissions for add/edit access
+            if (_authMode == CalendarAuthMode.OrganizationCalendar)
+            {
+                await CheckCalendarPermissions();
+            }
+            // For user calendars, permissions are checked in OnUserCalendarChanged
+            else if (calendarAccessLevel == "none")
+            {
+                await CheckCalendarPermissions();
+            }
+
+            var events = await GoogleCalendarService.GetCalendarEventsAsync(ModuleState.ModuleId, _calendarId, _authMode);
+
+            appointments = new List<ExtendedAppointment>();
+            if (events?.Items != null)
+            {
+                foreach (var calEvent in events.Items)
+                {
+                    var appointment = new ExtendedAppointment
+                    {
+                        GoogleEventId = calEvent.Id,
+                        Text = calEvent.Summary ?? "Untitled Event",
+                        Description = calEvent.Description ?? "",
+                        Location = calEvent.Location ?? "",
+                        Timezone = calEvent.Start?.TimeZone ?? "Australia/Sydney",
+                        AttendeeEmails = calEvent.Attendees?.Select(a => a.Email).Where(e => !string.IsNullOrEmpty(e)).ToList() ?? new List<string>()
+                    };
+
+                    // Handle both DateTime and Date-only events
+                    if (calEvent.Start.DateTime != null)
+                    {
+                        appointment.Start = calEvent.Start.DateTime.Value;
+                        appointment.IsAllDay = false;
+                    }
+                    else if (!string.IsNullOrEmpty(calEvent.Start.Date))
+                    {
+                        appointment.Start = DateTime.Parse(calEvent.Start.Date);
+                        appointment.IsAllDay = true;
+                    }
+
+                    if (calEvent.End.DateTime != null)
+                    {
+                        appointment.End = calEvent.End.DateTime.Value;
+                    }
+                    else if (!string.IsNullOrEmpty(calEvent.End.Date))
+                    {
+                        appointment.End = DateTime.Parse(calEvent.End.Date);
+                    }
+
+                    appointments.Add(appointment);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading events: {ex.Message}";
+            await logger.LogError(ex, "Error loading events for calendar {CalendarId}", _calendarId);
+        }
+    }
+
+    private async Task CheckCalendarPermissions()
+    {
+        if (string.IsNullOrEmpty(_calendarId))
+        {
+            calendarAccessLevel = "none";
+            return;
+        }
+
+        try
+        {
+            // Always check the logged-in user's OAuth permissions for add/edit access
+            // regardless of the auth mode used to display the calendar
+            var authInfo = await GoogleCalendarService.GetCalendarAuthInfoAsync(ModuleState.ModuleId);
+            if (!authInfo.UserGoogleAuthenticated)
+            {
+                calendarAccessLevel = "none";
+                return;
+            }
+
+            // Check user's personal access level to the calendar
+            calendarAccessLevel = await GoogleCalendarService.GetCalendarAccessLevelAsync(ModuleState.ModuleId, _calendarId, CalendarAuthMode.UserCalendar);
+        }
+        catch (Exception ex)
+        {
+            calendarAccessLevel = "none";
+            await logger.LogError(ex, "Error checking user calendar permissions for {CalendarId}", _calendarId);
+        }
+    }
+
+    private async Task RefreshCalendar()
+    {
+        await LoadCalendarData();
+        if (scheduler != null)
+        {
+            await scheduler.Reload();
+        }
+        StateHasChanged();
+    }
+
+    private async Task RefreshUserCalendars()
+    {
+        await LoadUserCalendars();
+        StateHasChanged();
+    }
+
+    private CalendarAuthMode GetApiAuthMode()
+    {
+        // If we're in Organization mode but permissions came from user OAuth,
+        // we need to use UserCalendar mode for API calls
+        if (_authMode == CalendarAuthMode.OrganizationCalendar && hasWriteAccess)
+        {
+            // Check if this looks like a personal calendar
+            if (_calendarId.Contains("@") && !_calendarId.Contains("group.calendar.google.com"))
+            {
+                return CalendarAuthMode.UserCalendar;
+            }
+        }
+
+        return _authMode;
+    }
 
     void OnSlotRender(SchedulerSlotRenderEventArgs args)
     {
@@ -191,68 +505,198 @@ else
 
     async Task OnSlotSelect(SchedulerSlotSelectEventArgs args)
     {
-        //console.Log($"SlotSelect: Start={args.Start} End={args.End}");
+        if (args.View.Text == "Year" || string.IsNullOrEmpty(_calendarId))
+            return;
 
-        if (args.View.Text != "Year")
+        // Check if user has write access before allowing add
+        if (!hasWriteAccess)
+            return;
+
+        try
         {
-            //need AddAppointmentPage first
-            // Appointment data = await DialogService.OpenAsync<AddAppointmentPage>("Add Appointment",
-            //     new Dictionary<string, object> { { "Start", args.Start }, { "End", args.End } });
+            // Use the correct auth mode for API calls
+            var apiAuthMode = GetApiAuthMode();
 
-            // if (data != null)
-            // {
-            //     appointments.Add(data);
-            //     // Either call the Reload method or reassign the Data property of the Scheduler
-            //     await scheduler.Reload();
-            // }
-        }
-    }
+            var data = await DialogService.OpenAsync<AddAppointment>("Add New Event",
+                new Dictionary<string, object>
+                {
+                    { "Start", args.Start },
+                    { "End", args.End },
+                    { "ModuleId", ModuleState.ModuleId },
+                    { "CalendarId", _calendarId },
+                    { "AuthMode", apiAuthMode } // Use the correct auth mode
+                },
+                new DialogOptions() { Width = "700px", Height = "600px" });
 
-    async Task OnAppointmentSelect(SchedulerAppointmentSelectEventArgs<Appointment> args)
-    {
-
-        var copy = new Appointment
+            if (data != null)
             {
-                Start = args.Data.Start,
-                End = args.Data.End,
-                Text = args.Data.Text
-            };
+                // Handle returned ExtendedAppointment directly
+                if (data is ExtendedAppointment extendedAppointment)
+                {
+                    appointments.Add(extendedAppointment);
+                }
+                else
+                {
+                    // Fallback for basic Appointment
+                    var fallbackAppointment = new ExtendedAppointment
+                    {
+                        Start = data.Start,
+                        End = data.End,
+                        Text = data.Text,
+                        Description = "",
+                        Location = "",
+                        Timezone = "Australia/Sydney",
+                        AttendeeEmails = new List<string>()
+                    };
+                    appointments.Add(fallbackAppointment);
+                }
 
-         var data = await DialogService.OpenAsync<EditAppointment>("Edit Appointment", new Dictionary<string, object> { { "Appointment", copy } });
+                await scheduler.Reload();
 
-        if (data != null)
-        {
-            // Update the appointment
-            args.Data.Start = data.Start;
-            args.Data.End = data.End;
-            args.Data.Text = data.Text;
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Success,
+                    Summary = "Event Created",
+                    Detail = "Event has been successfully added to your calendar.",
+                    Duration = 4000
+                });
+            }
         }
-
-        await scheduler.Reload();
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Failed to create event: {ex.Message}",
+                Duration = 6000
+            });
+            await logger.LogError(ex, "Error creating calendar event");
+        }
     }
 
-    void OnAppointmentRender(SchedulerAppointmentRenderEventArgs<Appointment> args)
+    async Task OnAppointmentSelect(SchedulerAppointmentSelectEventArgs<ExtendedAppointment> args)
     {
-        // Never call StateHasChanged in AppointmentRender - would lead to infinite loop
-
-        if (args.Data.Text == "Birthday")
+        try
         {
-            args.Attributes["style"] = "background: red";
+            // Check if user has write access - if not, show read-only dialog
+            bool isReadOnly = !hasWriteAccess;
+
+            var data = await DialogService.OpenAsync<EditAppointment>("Edit Event",
+                new Dictionary<string, object>
+                {
+                    { "Appointment", args.Data },
+                    { "ReadOnly", isReadOnly }
+                },
+                new DialogOptions() { Width = "700px", Height = "650px" });
+
+            if (data != null && !isReadOnly)
+            {
+                // Use the correct auth mode for API calls
+                var apiAuthMode = GetApiAuthMode();
+
+                if (data.ToString() == "DELETE_EVENT")
+                {
+                    // Call the actual delete API with correct auth mode
+                    await GoogleCalendarService.DeleteCalendarEventAsync(ModuleState.ModuleId, _calendarId, apiAuthMode, args.Data.GoogleEventId);
+
+                    appointments.Remove(args.Data);
+                    await scheduler.Reload();
+
+                    NotificationService.Notify(new NotificationMessage
+                    {
+                        Severity = NotificationSeverity.Success,
+                        Summary = "Event Deleted",
+                        Detail = "Event has been successfully deleted from Google Calendar.",
+                        Duration = 4000
+                    });
+                }
+                else if (data is ExtendedAppointment updatedAppointment)
+                {
+                    // Call the actual update API with correct auth mode
+                    await GoogleCalendarService.UpdateCalendarEventAsync(ModuleState.ModuleId, _calendarId, apiAuthMode, updatedAppointment);
+
+                    // Update local appointment
+                    args.Data.Start = updatedAppointment.Start;
+                    args.Data.End = updatedAppointment.End;
+                    args.Data.Text = updatedAppointment.Text;
+                    args.Data.Description = updatedAppointment.Description;
+                    args.Data.Location = updatedAppointment.Location;
+                    args.Data.Timezone = updatedAppointment.Timezone;
+                    args.Data.AttendeeEmails = updatedAppointment.AttendeeEmails;
+
+                    await scheduler.Reload();
+
+                    NotificationService.Notify(new NotificationMessage
+                    {
+                        Severity = NotificationSeverity.Success,
+                        Summary = "Event Updated",
+                        Detail = "Event has been successfully updated in Google Calendar.",
+                        Duration = 4000
+                    });
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Failed to process event: {ex.Message}",
+                Duration = 6000
+            });
+            await logger.LogError(ex, "Error processing calendar event");
+        }
+    }
+
+    void OnAppointmentRender(SchedulerAppointmentRenderEventArgs<ExtendedAppointment> args)
+    {
+        // Customize appointment appearance based on content
+        if (args.Data.Text?.ToLower().Contains("meeting") == true)
+        {
+            args.Attributes["style"] = "background: #007bff; color: white;";
+        }
+        else if (args.Data.Text?.ToLower().Contains("holiday") == true)
+        {
+            args.Attributes["style"] = "background: #28a745; color: white;";
         }
     }
 
     async Task OnAppointmentMove(SchedulerAppointmentMoveEventArgs args)
     {
-        var draggedAppointment = appointments.FirstOrDefault(x => x == args.Appointment.Data);
-
-        if (draggedAppointment != null)
+        try
         {
-            draggedAppointment.Start = draggedAppointment.Start + args.TimeSpan;
+            var draggedAppointment = appointments.FirstOrDefault(x => x == args.Appointment.Data);
 
-            draggedAppointment.End = draggedAppointment.End + args.TimeSpan;
+            if (draggedAppointment != null)
+            {
+                draggedAppointment.Start = draggedAppointment.Start + args.TimeSpan;
+                draggedAppointment.End = draggedAppointment.End + args.TimeSpan;
 
-            await scheduler.Reload();
+                await scheduler.Reload();
+
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Info,
+                    Summary = "Event Moved",
+                    Detail = "Event has been moved locally. Note: Google Calendar sync required.",
+                    Duration = 4000
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Failed to move event: {ex.Message}",
+                Duration = 6000
+            });
+            await logger.LogError(ex, "Error moving calendar event");
         }
     }
 
+ 
 }
