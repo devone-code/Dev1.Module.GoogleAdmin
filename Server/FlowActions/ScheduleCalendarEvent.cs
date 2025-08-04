@@ -1,15 +1,17 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using System.Threading.Tasks;
-using Dev1.Flow.Core;
-using Dev1.Flow.Core.Models;
-using Dev1.Module.GoogleAdmin.Services;
-using Dev1.Module.Flow.Helpers;
-using System;
-using Oqtane.Repository;
-using System.Collections.Generic;
-using NodaTime.TimeZones;
-using System.Linq;
+﻿using Dev1.Flow.Core;
 using Dev1.Flow.Core.DTOs;
+using Dev1.Flow.Core.Models;
+using Dev1.Module.Flow.Helpers;
+using Dev1.Module.GoogleAdmin.Services;
+using Dev1.Module.GoogleAdmin.Shared.Models;
+using Google.Apis.Admin.Directory.directory_v1.Data;
+using Microsoft.Extensions.DependencyInjection;
+using NodaTime.TimeZones;
+using Oqtane.Repository;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 //This class, along with the razor view for this Flow Action need the same namespace and Name
 //For display purposes, the Razor view may contain spaces, flow will remove these when attempting to find the Flow Processor for this action
@@ -39,14 +41,14 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
 
         public List<ActionPropertyDefinition> PropertyDefinitions => new List<ActionPropertyDefinition>
         {
-                 new ActionPropertyDefinition
-                {
-                    Name = "Organisation Calendar",
-                    InputTypeId = Convert.ToInt16(eInputType.Checkbox),
-                    ForceWorkflow = true,
-                    IsForWorkflow = true,
-                    IsRequired = false
-                 },
+                // new ActionPropertyDefinition
+                //{
+                //    Name = "Organisation Calendar",
+                //    InputTypeId = Convert.ToInt16(eInputType.Checkbox),
+                //    ForceWorkflow = true,
+                //    IsForWorkflow = true,
+                //    IsRequired = false
+                // },
 
 
             new ActionPropertyDefinition
@@ -93,6 +95,15 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
                     ForceWorkflow = false,
                     IsForWorkflow = false,
                     IsRequired = true
+                },
+
+            new ActionPropertyDefinition
+                {
+                    Name = "Location",
+                    InputTypeId = Convert.ToInt16(eInputType.Text),
+                    ForceWorkflow = false,
+                    IsForWorkflow = false,
+                    IsRequired = true
                 }
         };
 
@@ -104,12 +115,13 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
 
 
                 ////Get the properties we need to process this item.
-                var OrganisationCalendar = WorkflowHelpers.GetItemPropertyValue(WorkflowItem, "Organisation Calendar");
+                //var OrganisationCalendar = WorkflowHelpers.GetItemPropertyValue(WorkflowItem, "Organisation Calendar");
                 var Calendar = WorkflowHelpers.GetItemPropertyValue(WorkflowItem, "Calendar");
                 var Timezone = WorkflowHelpers.GetItemPropertyValue(WorkflowItem, "Timezone");
                 var StartDate = WorkflowHelpers.GetItemPropertyValue(WorkflowItem, "Start Date");
                 var EndDate = WorkflowHelpers.GetItemPropertyValue(WorkflowItem, "End Date");
                 var Summary = WorkflowHelpers.GetItemPropertyValue(WorkflowItem, "Summary");
+                var Location = WorkflowHelpers.GetItemPropertyValue(WorkflowItem, "Location");
                 //var Description = WorkflowHelpers.GetItemPropertyValue(WorkflowItem, "Description");
 
 
@@ -119,17 +131,37 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
                 //For now, just use the sigend in user (Workflow.CreatedBy).
 
                 var user = _userRepository.GetUser(WorkflowItem.ProcessedByUserId);
-                bool ForOrganisation;
-                Boolean.TryParse(OrganisationCalendar, out ForOrganisation);
-                string impersonateAccount = null;
+                //bool ForOrganisation;
+                //Boolean.TryParse(OrganisationCalendar, out ForOrganisation);
+                //string impersonateAccount = null;
 
-                if (!ForOrganisation)
-                    impersonateAccount = user.Email;
+                //if (!ForOrganisation)
+                //    impersonateAccount = user.Email;
+                ExtendedAppointment appointment = new ExtendedAppointment()
+                {
+                    Timezone = Timezone,
+                    AttendeeEmails = new List<string> { user.Email },
+                    Description = Summary,
+                    Start = new DateTime(Convert.ToInt64(StartDate)),
+                    End = new DateTime(Convert.ToInt64(EndDate)),
+                    Text = Summary,
+                    Location = Location,
+                };
 
-                await _googleCalendarService.ScheduleCalendarEventAsync(moduleId, impersonateAccount, 
-                    Calendar, Timezone, Convert.ToDateTime(StartDate), Convert.ToDateTime(EndDate), Summary,
-                    user.DisplayName, user.Email);
 
+
+                var eventId = await _googleCalendarService.CreateExtendedCalendarEventAsync(
+                    moduleId,
+                    Calendar,
+                    Shared.Models.CalendarAuthMode.UserCalendar,
+                    appointment
+                );
+
+
+                //await _googleCalendarService.ScheduleCalendarEventAsync(moduleId, impersonateAccount, 
+                //    Calendar, Timezone, Convert.ToDateTime(StartDate), Convert.ToDateTime(EndDate), Summary,
+                //    user.DisplayName, user.Email);
+                WorkflowItem.LastResponse = $"Google Event: {eventId} Created";
                 WorkflowItem.Status = (int)eActionStatus.Pass;
 
             }
@@ -180,16 +212,16 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
                             }).ToList()
                         };
 
-                    case "Organisation Calendar":
-                        return new ActionDataResponse
-                        {
-                            Success = true,
-                            Items = new List<ActionDataItem> 
-                            { 
-                                new ActionDataItem { Value = "true", Text = "Yes" },
-                                new ActionDataItem { Value = "false", Text = "No" }
-                            }
-                        };
+                    //case "Organisation Calendar":
+                    //    return new ActionDataResponse
+                    //    {
+                    //        Success = true,
+                    //        Items = new List<ActionDataItem> 
+                    //        { 
+                    //            new ActionDataItem { Value = "true", Text = "Yes" },
+                    //            new ActionDataItem { Value = "false", Text = "No" }
+                    //        }
+                    //    };
                 }
 
                 return new ActionDataResponse

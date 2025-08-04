@@ -101,7 +101,7 @@ else
 
     <RadzenScheduler @ref=@scheduler
                      SlotRender=@OnSlotRender
-                     style="height: 768px;"
+                     
                      TItem="ExtendedAppointment"
                      Data=@appointments
                      StartProperty="Start"
@@ -437,8 +437,6 @@ else
 
         try
         {
-            // Always check the logged-in user's OAuth permissions for add/edit access
-            // regardless of the auth mode used to display the calendar
             var authInfo = await GoogleCalendarService.GetCalendarAuthInfoAsync(ModuleState.ModuleId);
             if (!authInfo.UserGoogleAuthenticated)
             {
@@ -446,7 +444,18 @@ else
                 return;
             }
 
-            // Check user's personal access level to the calendar
+            // For user calendar mode, check if we already have the calendar in our loaded list
+            if (_authMode == CalendarAuthMode.UserCalendar && userCalendars != null && userCalendars.Any())
+            {
+                var matchingCalendar = userCalendars.FirstOrDefault(c => c.Id == _calendarId);
+                if (matchingCalendar != null)
+                {
+                    calendarAccessLevel = matchingCalendar.AccessRole ?? "none";
+                    return;
+                }
+            }
+
+            // Fallback to API call for organization calendars or if not found in user list
             calendarAccessLevel = await GoogleCalendarService.GetCalendarAccessLevelAsync(ModuleState.ModuleId, _calendarId, CalendarAuthMode.UserCalendar);
         }
         catch (Exception ex)
