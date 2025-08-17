@@ -26,14 +26,14 @@ namespace Dev1.Module.GoogleAdmin.Controllers
             _googleCalendarService = googleCalendarService;
         }
 
-        // GET: api/GoogleCalendar/authinfo?moduleid=x
+        // GET: api/GoogleCalendar/authinfo?moduleid=x&useremail=x
         [HttpGet("authinfo")]
         [Authorize(Policy = PolicyNames.ViewModule)]
-        public async Task<CalendarAuthInfo> GetAuthInfo(int moduleId)
+        public async Task<CalendarAuthInfo> GetAuthInfo(int moduleId, string userEmail)
         {
             if (IsAuthorizedEntityId(EntityNames.Module, moduleId))
             {
-                return await _googleCalendarService.GetCalendarAuthInfoAsync(moduleId);
+                return await _googleCalendarService.GetCalendarAuthInfoAsync(moduleId, userEmail);
             }
             else
             {
@@ -43,20 +43,20 @@ namespace Dev1.Module.GoogleAdmin.Controllers
             }
         }
 
-        // GET: api/GoogleCalendar/calendars?moduleid=x&authmode=x
+        // GET: api/GoogleCalendar/calendars?moduleid=x&authmode=x&useremail=x
         [HttpGet("calendars")]
         [Authorize(Policy = PolicyNames.ViewModule)]
-        public async Task<CalendarList> GetCalendars(int moduleId, CalendarAuthMode authMode)
+        public async Task<CalendarList> GetCalendars(int moduleId, CalendarAuthMode authMode, string userEmail)
         {
             if (IsAuthorizedEntityId(EntityNames.Module, moduleId))
             {
                 try
                 {
-                    return await _googleCalendarService.GetAvailableGoogleCalendarsAsync(moduleId, authMode);
+                    return await _googleCalendarService.GetAvailableGoogleCalendarsAsync(moduleId, authMode, userEmail);
                 }
                 catch (Exception ex)
                 {
-                    _logger.Log(LogLevel.Error, this, LogFunction.Read, "Error getting calendars for module {ModuleId}: {Error}", moduleId, ex.Message);
+                    _logger.Log(LogLevel.Error, this, LogFunction.Read, "Error getting calendars for module {ModuleId} user {UserEmail}: {Error}", moduleId, userEmail ?? "current", ex.Message);
                     HttpContext.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
                     return null;
                 }
@@ -69,20 +69,20 @@ namespace Dev1.Module.GoogleAdmin.Controllers
             }
         }
 
-        // GET: api/GoogleCalendar/calendar?moduleid=x&calendarid=x&authmode=x
+        // GET: api/GoogleCalendar/calendar?moduleid=x&calendarid=x&authmode=x&useremail=x
         [HttpGet("calendar")]
         [Authorize(Policy = PolicyNames.ViewModule)]
-        public async Task<Calendar> GetCalendar(int moduleId, string calendarId, CalendarAuthMode authMode)
+        public async Task<Calendar> GetCalendar(int moduleId, string calendarId, CalendarAuthMode authMode, string userEmail)
         {
             if (IsAuthorizedEntityId(EntityNames.Module, moduleId))
             {
                 try
                 {
-                    return await _googleCalendarService.GetGoogleCalendarAsync(moduleId, calendarId, authMode);
+                    return await _googleCalendarService.GetGoogleCalendarAsync(moduleId, calendarId, authMode, userEmail);
                 }
                 catch (Exception ex)
                 {
-                    _logger.Log(LogLevel.Error, this, LogFunction.Read, "Error getting calendar {CalendarId} for module {ModuleId}: {Error}", calendarId, moduleId, ex.Message);
+                    _logger.Log(LogLevel.Error, this, LogFunction.Read, "Error getting calendar {CalendarId} for module {ModuleId} user {UserEmail}: {Error}", calendarId, moduleId, userEmail ?? "current", ex.Message);
                     HttpContext.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
                     return null;
                 }
@@ -95,20 +95,20 @@ namespace Dev1.Module.GoogleAdmin.Controllers
             }
         }
 
-        // GET: api/GoogleCalendar/events?moduleid=x&calendarid=x&authmode=x
+        // GET: api/GoogleCalendar/events?moduleid=x&calendarid=x&authmode=x&useremail=x
         [HttpGet("events")]
         [Authorize(Policy = PolicyNames.ViewModule)]
-        public async Task<Events> GetEvents(int moduleId, string calendarId, CalendarAuthMode authMode)
+        public async Task<Events> GetEvents(int moduleId, string calendarId, CalendarAuthMode authMode, string userEmail)
         {
             if (IsAuthorizedEntityId(EntityNames.Module, moduleId))
             {
                 try
                 {
-                    return await _googleCalendarService.GetCalendarEventsAsync(moduleId, calendarId, authMode);
+                    return await _googleCalendarService.GetCalendarEventsAsync(moduleId, calendarId, authMode, userEmail);
                 }
                 catch (Exception ex)
                 {
-                    _logger.Log(LogLevel.Error, this, LogFunction.Read, "Error getting events for calendar {CalendarId} module {ModuleId}: {Error}", calendarId, moduleId, ex.Message);
+                    _logger.Log(LogLevel.Error, this, LogFunction.Read, "Error getting events for calendar {CalendarId} module {ModuleId} user {UserEmail}: {Error}", calendarId, moduleId, userEmail ?? "current", ex.Message);
                     HttpContext.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
                     return null;
                 }
@@ -139,11 +139,12 @@ namespace Dev1.Module.GoogleAdmin.Controllers
                         request.EndDate, 
                         request.Summary,
                         request.AttendeeName, 
-                        request.AttendeeEmail);
+                        request.AttendeeEmail,
+                        request.UserEmail);
                 }
                 catch (Exception ex)
                 {
-                    _logger.Log(LogLevel.Error, this, LogFunction.Create, "Error creating calendar event for module {ModuleId}: {Error}", request.ModuleId, ex.Message);
+                    _logger.Log(LogLevel.Error, this, LogFunction.Create, "Error creating calendar event for module {ModuleId} user {UserEmail}: {Error}", request.ModuleId, request.UserEmail ?? "current", ex.Message);
                     HttpContext.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
                     return null;
                 }
@@ -165,11 +166,11 @@ namespace Dev1.Module.GoogleAdmin.Controllers
             {
                 try
                 {
-                    return await _googleCalendarService.CreateExtendedCalendarEventAsync(request.ModuleId, request.CalendarId, request.AuthMode, request.Appointment);
+                    return await _googleCalendarService.CreateExtendedCalendarEventAsync(request.ModuleId, request.CalendarId, request.AuthMode, request.Appointment, request.UserEmail);
                 }
                 catch (Exception ex)
                 {
-                    _logger.Log(LogLevel.Error, this, LogFunction.Create, "Error creating extended event for module {ModuleId}: {Error}", request.ModuleId, ex.Message);
+                    _logger.Log(LogLevel.Error, this, LogFunction.Create, "Error creating extended event for module {ModuleId} user {UserEmail}: {Error}", request.ModuleId, request.UserEmail ?? "current", ex.Message);
                     HttpContext.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
                     return null;
                 }
@@ -191,11 +192,11 @@ namespace Dev1.Module.GoogleAdmin.Controllers
             {
                 try
                 {
-                    return await _googleCalendarService.UpdateCalendarEventAsync(request.ModuleId, request.CalendarId, request.AuthMode, request.Appointment);
+                    return await _googleCalendarService.UpdateCalendarEventAsync(request.ModuleId, request.CalendarId, request.AuthMode, request.Appointment, request.UserEmail);
                 }
                 catch (Exception ex)
                 {
-                    _logger.Log(LogLevel.Error, this, LogFunction.Update, "Error updating extended event for module {ModuleId}: {Error}", request.ModuleId, ex.Message);
+                    _logger.Log(LogLevel.Error, this, LogFunction.Update, "Error updating extended event for module {ModuleId} user {UserEmail}: {Error}", request.ModuleId, request.UserEmail ?? "current", ex.Message);
                     HttpContext.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
                     return null;
                 }
@@ -208,20 +209,20 @@ namespace Dev1.Module.GoogleAdmin.Controllers
             }
         }
 
-        // DELETE: api/GoogleCalendar/events?moduleid=x&calendarid=x&authmode=x&eventid=x
+        // DELETE: api/GoogleCalendar/events?moduleid=x&calendarid=x&authmode=x&eventid=x&useremail=x
         [HttpDelete("events")]
         [Authorize(Policy = PolicyNames.EditModule)]
-        public async Task DeleteEvent(int moduleId, string calendarId, CalendarAuthMode authMode, string eventId)
+        public async Task DeleteEvent(int moduleId, string calendarId, CalendarAuthMode authMode, string eventId, string userEmail)
         {
             if (IsAuthorizedEntityId(EntityNames.Module, moduleId))
             {
                 try
                 {
-                    await _googleCalendarService.DeleteCalendarEventAsync(moduleId, calendarId, authMode, eventId);
+                    await _googleCalendarService.DeleteCalendarEventAsync(moduleId, calendarId, authMode, eventId, userEmail);
                 }
                 catch (Exception ex)
                 {
-                    _logger.Log(LogLevel.Error, this, LogFunction.Delete, "Error deleting event {EventId} for module {ModuleId}: {Error}", eventId, moduleId, ex.Message);
+                    _logger.Log(LogLevel.Error, this, LogFunction.Delete, "Error deleting event {EventId} for module {ModuleId} user {UserEmail}: {Error}", eventId, moduleId, userEmail ?? "current", ex.Message);
                     HttpContext.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
                 }
             }
@@ -232,20 +233,20 @@ namespace Dev1.Module.GoogleAdmin.Controllers
             }
         }
 
-        // GET: api/GoogleCalendar/access?moduleid=x&calendarid=x&authmode=x
+        // GET: api/GoogleCalendar/access?moduleid=x&calendarid=x&authmode=x&useremail=x
         [HttpGet("access")]
         [Authorize(Policy = PolicyNames.ViewModule)]
-        public async Task<string> GetCalendarAccess(int moduleId, string calendarId, CalendarAuthMode authMode)
+        public async Task<string> GetCalendarAccess(int moduleId, string calendarId, CalendarAuthMode authMode, string userEmail)
         {
             if (IsAuthorizedEntityId(EntityNames.Module, moduleId))
             {
                 try
                 {
-                    return await _googleCalendarService.GetCalendarAccessLevelAsync(moduleId, calendarId, authMode);
+                    return await _googleCalendarService.GetCalendarAccessLevelAsync(moduleId, calendarId, authMode, userEmail);
                 }
                 catch (Exception ex)
                 {
-                    _logger.Log(LogLevel.Error, this, LogFunction.Read, "Error getting calendar access for {CalendarId} module {ModuleId}: {Error}", calendarId, moduleId, ex.Message);
+                    _logger.Log(LogLevel.Error, this, LogFunction.Read, "Error getting calendar access for {CalendarId} module {ModuleId} user {UserEmail}: {Error}", calendarId, moduleId, userEmail ?? "current", ex.Message);
                     HttpContext.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
                     return "none";
                 }
@@ -268,7 +269,7 @@ namespace Dev1.Module.GoogleAdmin.Controllers
                 try
                 {
                     var authMode = string.IsNullOrEmpty(impersonateAccount) ? CalendarAuthMode.OrganizationCalendar : CalendarAuthMode.UserCalendar;
-                    return await _googleCalendarService.GetAvailableGoogleCalendarsAsync(moduleId, authMode);
+                    return await _googleCalendarService.GetAvailableGoogleCalendarsAsync(moduleId, authMode, impersonateAccount);
                 }
                 catch (Exception ex)
                 {
@@ -296,6 +297,7 @@ namespace Dev1.Module.GoogleAdmin.Controllers
             public string Summary { get; set; }
             public string AttendeeName { get; set; }
             public string AttendeeEmail { get; set; }
+            public string UserEmail { get; set; }
         }
 
         public class ExtendedEventRequest
@@ -304,6 +306,7 @@ namespace Dev1.Module.GoogleAdmin.Controllers
             public string CalendarId { get; set; }
             public CalendarAuthMode AuthMode { get; set; }
             public ExtendedAppointment Appointment { get; set; }
+            public string UserEmail { get; set; }
         }
     }
 }

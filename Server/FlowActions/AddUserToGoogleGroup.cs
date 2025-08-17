@@ -3,36 +3,27 @@ using System.Threading.Tasks;
 using Dev1.Flow.Core;
 using Dev1.Flow.Core.Models;
 using Dev1.Module.GoogleAdmin.Services;
-using Dev1.Module.Flow.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using Dev1.Flow.Core.DTOs;
 using Oqtane.Repository;
+using Dev1.Flow.Core.Helpers;
 
-
-//This class, along with the razor view for this Flow Action need the same namespace and Name
-//For display purposes, the Razor view may contain spaces, flow will remove these when attempting to find the Flow Processor for this action
-//EG:
-//  Notification Email.razor and NotificationEmail.cs will work 
-//  Notification Email.razor and NotificationEmai.cs will work
-//
-//  Notification EmailView.razor and NotificationEmail.cs will not work as they have different names once the spaces have been removed
 
 namespace Dev1.Module.GoogleAdmin.GoogleAction
 {
-    //[FlowProcessor(serviceLifetime: ServiceLifetime.Scoped)]
     public class AddUserToGoogleGroup : IFlowProcessor
     {
         public string ActionName => "Add User to Google Group";
-        public string ActionDescription => "Adds a user to the specified Google Group (requires the user processing this item to be logged in via Google).";
+        public string ActionDescription => "Adds a user to the specified Google Group. For manual processing, requires the user to be logged in via Google. For automated processing, uses service account credentials.";
 
         public List<string> ContextRequirements => new List<string>();
 
         private readonly IGoogleDirectoryService _googleDirectoryService;
         private readonly IUserRepository _userRepository;
 
-        public AddUserToGoogleGroup(IGoogleDirectoryService googleDirectoryService,IUserRepository userRepository)
+        public AddUserToGoogleGroup(IGoogleDirectoryService googleDirectoryService, IUserRepository userRepository)
         {
             _googleDirectoryService = googleDirectoryService;
             _userRepository = userRepository;
@@ -44,8 +35,8 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
             {
                     Name = "User Group",
                     InputTypeId = Convert.ToInt16(eInputType.List),
-                    ForceWorkflow = true,
-                    IsForWorkflow = true,
+                    ForceWorkflow = false,
+                    IsForWorkflow = false,
                     IsRequired = true
                 },
 
@@ -54,39 +45,42 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
             {
                 Name = "Role",
                 InputTypeId = Convert.ToInt16(eInputType.List),
-                ForceWorkflow = true,
-                IsForWorkflow = true,
+                ForceWorkflow = false,
+                IsForWorkflow = false,
                 IsRequired = true
             }
         };
 
-        public async Task ExecuteActionAsync(WorkflowItemDto WorkflowItem, int SiteId, int moduleId, int userId,string ContextName,string ContextEmail)
+        public async Task ExecuteActionAsync(WorkflowItemDto WorkflowItem, int SiteId, int moduleId, int loggedInUserId, string ContextName, string ContextEmail)
         {
             try
             {
 
+                // Get the properties we need to process this item
+                var group = FlowActionHelpers.GetItemPropertyValue(WorkflowItem, "User Group");
+                var role = FlowActionHelpers.GetItemPropertyValue(WorkflowItem, "Role");
 
+                // Get the user to add to the group
+                //var user = _userRepository.GetUser(userId);
+                if (ContextEmail == null)
+                {
+                    throw new Exception("User not found for manual processing");
+                }
 
-                ////Get the properties we need to process this item.
-                var group = WorkflowHelpers.GetItemPropertyValue(WorkflowItem, "User Group");
-                var role = WorkflowHelpers.GetItemPropertyValue(WorkflowItem, "Role");
+                // For service account processing, we might need to get the user email differently
+                // or it might be passed as part of the workflow context
+                string userEmail = ContextEmail;
 
+                if (string.IsNullOrEmpty(userEmail))
+                {
+                    throw new Exception("User email not available for group membership");
+                }
 
-
-
-                //This action should have an additional property of "User to Add":
-                //1 SourceUser: The user who was logged in when this flow was triggered
-                //2 Specific User: Email address
-                //For now, just use the sigend in user (Workflow.CreatedBy).
-                var user = _userRepository.GetUser(userId);
-
-
-                await _googleDirectoryService.AddMemberToGroup(group,user.Email,role,moduleId);
+                await _googleDirectoryService.AddMemberToGroup(group, userEmail, role, moduleId, ContextEmail);
 
                 WorkflowItem.Status = (int)eActionStatus.Pass;
-
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 WorkflowItem.LastResponse = ex.Message;
                 WorkflowItem.Status = (int)eActionStatus.Fail;
@@ -97,19 +91,23 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
         {
             try
             {
+
+                var user = _userRepository.GetUser(userid);
+                string userEmail = user?.Email ?? string.Empty;
                 switch (propertyName)
                 {
                     case "User Group":
-                        var groups = await _googleDirectoryService.GetDirectoryGroupsAsync(moduleid);
+                        // For design-time, always use OAuth (userid > 0 means a user is designing the flow)
+                        var groups = await _googleDirectoryService.GetDirectoryGroupsAsync(moduleid, userEmail);
                         if (groups != null)
                         {
                             return new ActionDataResponse
                             {
                                 Success = true,
-                                Items = groups.Select(g => new ActionDataItem 
-                                { 
-                                    Value = g.Email, 
-                                    Text = g.Name 
+                                Items = groups.Select(g => new ActionDataItem
+                                {
+                                    Value = g.Email,
+                                    Text = g.Name
                                 }).ToList()
                             };
                         }
@@ -121,14 +119,14 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
                             .Cast<Models.eGroupRole>()
                             .Select(r => r.ToString())
                             .ToList();
-                        
+
                         return new ActionDataResponse
                         {
                             Success = true,
-                            Items = roles.Select(role => new ActionDataItem 
-                            { 
-                                Value = role, 
-                                Text = role 
+                            Items = roles.Select(role => new ActionDataItem
+                            {
+                                Value = role,
+                                Text = role
                             }).ToList()
                         };
                 }

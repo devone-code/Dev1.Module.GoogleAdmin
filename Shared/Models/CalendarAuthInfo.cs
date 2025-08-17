@@ -24,7 +24,17 @@ namespace Dev1.Module.GoogleAdmin.Shared.Models
         /// Whether the current user is authenticated with Google
         /// </summary>
         public bool UserGoogleAuthenticated { get; set; }
-
+        
+        /// <summary>
+        /// Whether service account can impersonate users (domain-wide delegation)
+        /// </summary>
+        public bool ImpersonationAvailable { get; set; }
+        
+        /// <summary>
+        /// Current user's email for impersonation
+        /// </summary>
+        public string UserEmail { get; set; }
+        
         /// <summary>
         /// Error message if authentication setup is incomplete
         /// </summary>

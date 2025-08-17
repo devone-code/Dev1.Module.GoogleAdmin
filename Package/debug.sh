@@ -8,10 +8,6 @@ cp -f "../Shared/bin/Debug/net9.0/Dev1.Module.GoogleAdmin.Shared.Oqtane.pdb" "..
 
 cp -f "../Server/bin/Debug/net9.0/Dev1.Module.Flow.Core.dll" "../../oqtane.framework/Oqtane.Server/bin/Debug/net9.0/"
 cp -f "../Server/bin/Debug/net9.0/Dev1.Module.Flow.Core.pdb" "../../oqtane.framework/Oqtane.Server/bin/Debug/net9.0/"
-cp -f "../Server/bin/Debug/net9.0/Dev1.Module.Flow.Shared.Oqtane.dll" "../../oqtane.framework/Oqtane.Server/bin/Debug/net9.0/"
-cp -f "../Server/bin/Debug/net9.0/Dev1.Module.Flow.Shared.Oqtane.pdb" "../../oqtane.framework/Oqtane.Server/bin/Debug/net9.0/"
-
-
 
 cp -f "../Shared/bin/Debug/net9.0/Google.Apis.dll" "../../oqtane.framework/Oqtane.Server/bin/Debug/net9.0/"
 cp -f "../Shared/bin/Debug/net9.0/Google.Apis.pdb" "../../oqtane.framework/Oqtane.Server/bin/Debug/net9.0/"

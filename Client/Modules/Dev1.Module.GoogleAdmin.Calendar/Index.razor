@@ -113,18 +113,20 @@ else
                      AppointmentSelect=@OnAppointmentSelect
                      AppointmentRender=@OnAppointmentRender
                      AppointmentMove=@OnAppointmentMove>
-        @if (_showDayView)
-        {
-            <RadzenDayView />
-        }
-        @if (_showWeekView)
-        {
-            <RadzenWeekView />
-        }
         @if (_showMonthView)
         {
             <RadzenMonthView />
         }
+
+        @if (_showWeekView)
+        {
+            <RadzenWeekView />
+        }
+        @if (_showDayView)
+        {
+            <RadzenDayView />
+        }
+
         @if (_showYearView)
         {
             <RadzenYearView />
@@ -260,14 +262,14 @@ else
         try
         {
             // Check OAuth authentication first
-            var authInfo = await GoogleCalendarService.GetCalendarAuthInfoAsync(ModuleState.ModuleId);
+            var authInfo = await GoogleCalendarService.GetCalendarAuthInfoAsync(ModuleState.ModuleId, PageState.User.Email);
             if (!authInfo.UserGoogleAuthenticated)
             {
                 userCalendarError = "You must sign into this website using Google to view your calendars";
                 return;
             }
 
-            var calendarList = await GoogleCalendarService.GetAvailableGoogleCalendarsAsync(ModuleState.ModuleId, CalendarAuthMode.UserCalendar);
+            var calendarList = await GoogleCalendarService.GetAvailableGoogleCalendarsAsync(ModuleState.ModuleId, CalendarAuthMode.UserCalendar, PageState.User.Email);
             userCalendars = calendarList?.Items?.ToList() ?? new List<CalendarListEntry>();
 
             if (!userCalendars.Any())
@@ -378,7 +380,7 @@ else
                 await CheckCalendarPermissions();
             }
 
-            var events = await GoogleCalendarService.GetCalendarEventsAsync(ModuleState.ModuleId, _calendarId, _authMode);
+            var events = await GoogleCalendarService.GetCalendarEventsAsync(ModuleState.ModuleId, _calendarId, _authMode, PageState.User.Email);
 
             appointments = new List<ExtendedAppointment>();
             if (events?.Items != null)
@@ -437,7 +439,7 @@ else
 
         try
         {
-            var authInfo = await GoogleCalendarService.GetCalendarAuthInfoAsync(ModuleState.ModuleId);
+            var authInfo = await GoogleCalendarService.GetCalendarAuthInfoAsync(ModuleState.ModuleId, PageState.User.Email);
             if (!authInfo.UserGoogleAuthenticated)
             {
                 calendarAccessLevel = "none";
@@ -456,7 +458,7 @@ else
             }
 
             // Fallback to API call for organization calendars or if not found in user list
-            calendarAccessLevel = await GoogleCalendarService.GetCalendarAccessLevelAsync(ModuleState.ModuleId, _calendarId, CalendarAuthMode.UserCalendar);
+            calendarAccessLevel = await GoogleCalendarService.GetCalendarAccessLevelAsync(ModuleState.ModuleId, _calendarId, CalendarAuthMode.UserCalendar, PageState.User.Email);
         }
         catch (Exception ex)
         {
@@ -607,7 +609,7 @@ else
                 if (data.ToString() == "DELETE_EVENT")
                 {
                     // Call the actual delete API with correct auth mode
-                    await GoogleCalendarService.DeleteCalendarEventAsync(ModuleState.ModuleId, _calendarId, apiAuthMode, args.Data.GoogleEventId);
+                    await GoogleCalendarService.DeleteCalendarEventAsync(ModuleState.ModuleId, _calendarId, apiAuthMode, args.Data.GoogleEventId, PageState.User.Email);
 
                     appointments.Remove(args.Data);
                     await scheduler.Reload();
@@ -623,7 +625,7 @@ else
                 else if (data is ExtendedAppointment updatedAppointment)
                 {
                     // Call the actual update API with correct auth mode
-                    await GoogleCalendarService.UpdateCalendarEventAsync(ModuleState.ModuleId, _calendarId, apiAuthMode, updatedAppointment);
+                    await GoogleCalendarService.UpdateCalendarEventAsync(ModuleState.ModuleId, _calendarId, apiAuthMode, updatedAppointment, PageState.User.Email);
 
                     // Update local appointment
                     args.Data.Start = updatedAppointment.Start;

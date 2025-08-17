@@ -10,7 +10,7 @@ namespace Dev1.Module.GoogleAdmin.Services
         /// <summary>
         /// Gets information about available authentication methods
         /// </summary>
-        Task<CalendarAuthInfo> GetAuthInfoAsync();
+        Task<CalendarAuthInfo> GetAuthInfoAsync(string userEmail);
         
         /// <summary>
         /// Gets a service account credential for organization-level access
@@ -18,11 +18,13 @@ namespace Dev1.Module.GoogleAdmin.Services
         ServiceAccountCredential GetServiceAccountCredential(string[] scopes);
         
         /// <summary>
-        /// Gets a user credential from OAuth2 access token for user-level access
+        /// Gets a user credential, preferring impersonation over OAuth2
         /// </summary>
-        Task<GoogleCredential> GetUserGoogleCredentialAsync(string[] scopes);
+        Task<GoogleCredential> GetUserGoogleCredentialAsync(string[] scopes, string userEmail);
 
-        // Method still needed by existing GoogleDriveService and GoogleDirectoryService - remove obsolete attribute
+        /// <summary>
+        /// Gets a service account credential with optional user impersonation
+        /// </summary>
         GoogleCredential GetGoogleCredentialFromServiceKey(string[] scopes, string delegatedEmailAddress);
     }
 }

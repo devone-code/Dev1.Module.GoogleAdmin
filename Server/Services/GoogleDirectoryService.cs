@@ -41,7 +41,7 @@ namespace Dev1.Module.GoogleAdmin.Services
             _googleCredentials = googleCredentials;
         }
 
-        public async Task<IList<Group>> GetDirectoryGroupsAsync(int moduleId)
+        public async Task<IList<Group>> GetDirectoryGroupsAsync(int moduleId, string userEmail)
         {
             if (!_userPermissions.IsAuthorized(_httpContextAccessor.HttpContext.User, _alias.SiteId, EntityNames.Module, moduleId, PermissionNames.View))
             {
@@ -50,7 +50,7 @@ namespace Dev1.Module.GoogleAdmin.Services
 
             try
             {
-                var directoryService = CreateDirectoryService();
+                var directoryService = await CreateDirectoryServiceAsync(userEmail);
                 var domain = GetDomain();
 
                 var groupRequest = directoryService.Groups.List();
@@ -61,17 +61,19 @@ namespace Dev1.Module.GoogleAdmin.Services
             }
             catch (Google.GoogleApiException ex)
             {
-                _logger.Log(LogLevel.Error, this, LogFunction.Other, "Error getting directory groups for module {ModuleId}: {Error}", moduleId, ex.Message);
+                _logger.Log(LogLevel.Error, this, LogFunction.Other, "Google API error getting directory groups for module {ModuleId} for user {UserEmail}: {Error}", 
+                    moduleId, userEmail, ex.Message);
                 throw new Exception($"Google Directory API Error: {ex.Message}", ex);
             }
             catch (Exception ex)
             {
-                _logger.Log(LogLevel.Error, this, LogFunction.Other, "Error getting directory groups for module {ModuleId}: {Error}", moduleId, ex.Message);
+                _logger.Log(LogLevel.Error, this, LogFunction.Other, "Error getting directory groups for module {ModuleId} for user {UserEmail}: {Error}", 
+                    moduleId, userEmail, ex.Message);
                 throw;
             }
         }
 
-        public async Task<Member> AddMemberToGroup(string groupName, string memberEmail, string role, int moduleId)
+        public async Task<Member> AddMemberToGroup(string groupName, string memberEmail, string role, int moduleId, string userEmail)
         {
             if (!_userPermissions.IsAuthorized(_httpContextAccessor.HttpContext.User, _alias.SiteId, EntityNames.Module, moduleId, PermissionNames.Edit))
             {
@@ -80,7 +82,7 @@ namespace Dev1.Module.GoogleAdmin.Services
 
             try
             {
-                var directoryService = CreateDirectoryService();
+                var directoryService = await CreateDirectoryServiceAsync(userEmail);
 
                 var member = new Member
                 {
@@ -90,23 +92,26 @@ namespace Dev1.Module.GoogleAdmin.Services
                 };
 
                 var result = await directoryService.Members.Insert(member, groupName).ExecuteAsync();
-                _logger.Log(LogLevel.Information, this, LogFunction.Create, "Member {Email} added to group {Group}", memberEmail, groupName);
+                _logger.Log(LogLevel.Information, this, LogFunction.Create, "Member {Email} added to group {Group} by user {UserEmail}", 
+                    memberEmail, groupName, userEmail);
                 
                 return result;
             }
             catch (Google.GoogleApiException ex)
             {
-                _logger.Log(LogLevel.Error, this, LogFunction.Other, "Error adding member {Email} to group {Group}: {Error}", memberEmail, groupName, ex.Message);
+                _logger.Log(LogLevel.Error, this, LogFunction.Other, "Google API error adding member {Email} to group {Group} for user {UserEmail}: {Error}", 
+                    memberEmail, groupName, userEmail, ex.Message);
                 throw new Exception($"Google Directory API Error: {ex.Error?.Message ?? ex.Message}", ex);
             }
             catch (Exception ex)
             {
-                _logger.Log(LogLevel.Error, this, LogFunction.Other, "Error adding member {Email} to group {Group}: {Error}", memberEmail, groupName, ex.Message);
+                _logger.Log(LogLevel.Error, this, LogFunction.Other, "Error adding member {Email} to group {Group} for user {UserEmail}: {Error}", 
+                    memberEmail, groupName, userEmail, ex.Message);
                 throw;
             }
         }
 
-        private DirectoryService CreateDirectoryService()
+        private async Task<DirectoryService> CreateDirectoryServiceAsync(string userEmail)
         {
             var scopes = new[] { 
                 DirectoryService.Scope.AdminDirectoryGroup, 
@@ -114,8 +119,7 @@ namespace Dev1.Module.GoogleAdmin.Services
                 DirectoryService.Scope.AdminDirectoryUser 
             };
 
-            // Use the new method for better consistency, but fall back to old method for backwards compatibility
-            var credential = _googleCredentials.GetServiceAccountCredential(scopes);
+            var credential = await _googleCredentials.GetUserGoogleCredentialAsync(scopes, userEmail);
             var applicationName = GetApplicationName();
 
             return new DirectoryService(new Google.Apis.Services.BaseClientService.Initializer

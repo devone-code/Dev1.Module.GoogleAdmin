@@ -6,8 +6,7 @@ namespace Dev1.Module.GoogleAdmin.Services
 {
     public interface IGoogleDirectoryService
     {
-        Task<IList<Group>> GetDirectoryGroupsAsync(int ModuleId);
-
-        Task<Member> AddMemberToGroup(string groupName, string memberEmail, string role, int ModuleId);
+        Task<IList<Group>> GetDirectoryGroupsAsync(int moduleId, string userEmail);
+        Task<Member> AddMemberToGroup(string groupName, string memberEmail, string role, int moduleId, string userEmail);
     }
 }

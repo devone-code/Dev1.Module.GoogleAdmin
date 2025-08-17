@@ -27,10 +27,7 @@
     <file src="..\Shared\bin\Release\net9.0\Dev1.Module.GoogleAdmin.Shared.Oqtane.dll" target="lib\net9.0" /> 
     <file src="..\Shared\bin\Release\net9.0\Dev1.Module.GoogleAdmin.Shared.Oqtane.pdb" target="lib\net9.0" />
 
-	  <file src="..\Client\bin\Release\net9.0\Dev1.Flow.Core.dll" target="lib\net9.0" />
-	  <file src="..\Server\bin\Release\net9.0\Dev1.Module.Flow.Shared.Oqtane.dll" target="lib\net9.0" />
-	  
-	  
+	  <file src="..\Server\bin\Release\net9.0\Dev1.Flow.Core.dll" target="lib\net9.0" />
 	  
 	  <file src="..\Server\bin\Release\net9.0\Google.Apis.dll" target="lib\net9.0" />
 	  <file src="..\Server\bin\Release\net9.0\Google.Apis.Core.dll" target="lib\net9.0" />

@@ -11,6 +11,9 @@ using Oqtane.Infrastructure;
 using Oqtane.Enums;
 using Dev1.Module.GoogleAdmin.Shared.Models;
 
+using Google.Apis.Services;
+using System.Threading;
+
 namespace Dev1.Module.GoogleAdmin.Services
 {
     public class GoogleCredentials : IGoogleCredentials
@@ -29,62 +32,115 @@ namespace Dev1.Module.GoogleAdmin.Services
             _logger = logger;
         }
 
-        public async Task<CalendarAuthInfo> GetAuthInfoAsync()
+        public async Task<CalendarAuthInfo> GetAuthInfoAsync(string userEmail)
         {
             var authInfo = new CalendarAuthInfo();
             
             try
             {
-                // Check service account availability
                 var settings = _settingRepository.GetSettings("Site");
                 var serviceKey = settings.FirstOrDefault(x => x.SettingName == "Dev1.GoogleAdmin:ServiceKey");
                 authInfo.ServiceAccountAvailable = serviceKey != null && !string.IsNullOrEmpty(serviceKey.SettingValue);
                 
-                // Check OAuth2 availability
                 var httpContext = _httpContextAccessor.HttpContext;
                 if (httpContext?.User?.Identity?.IsAuthenticated == true)
                 {
-                    try
+                    authInfo.UserEmail = userEmail;
+                    
+                    // Check if we can use impersonation
+                    if (authInfo.ServiceAccountAvailable && !string.IsNullOrEmpty(authInfo.UserEmail))
                     {
-                        var accessToken = await httpContext.GetTokenAsync("access_token");
-                        authInfo.OAuth2Available = !string.IsNullOrEmpty(accessToken);
-                        authInfo.UserGoogleAuthenticated = authInfo.OAuth2Available;
+                        //authInfo.ImpersonationAvailable = await TestImpersonationAsync(authInfo.UserEmail);
+                        //if (authInfo.ImpersonationAvailable)
+                        //{
+                            authInfo.UserGoogleAuthenticated = true;
+                            _logger.Log(Oqtane.Shared.LogLevel.Information, this, LogFunction.Other, 
+                                "Service account impersonation available for user {Email}", authInfo.UserEmail);
+                        //}
                     }
-                    catch (Exception ex)
+                    
+                    // Fallback to OAuth check if impersonation not available
+                    if (!authInfo.ImpersonationAvailable)
                     {
-                        _logger.Log(Oqtane.Shared.LogLevel.Debug, this, LogFunction.Other, "OAuth2 token check failed: {Error}", ex.Message);
-                        authInfo.OAuth2Available = false;
-                        authInfo.UserGoogleAuthenticated = false;
+                        try
+                        {
+                            var accessToken = await httpContext.GetTokenAsync("access_token");
+                            authInfo.OAuth2Available = !string.IsNullOrEmpty(accessToken);
+                            if (authInfo.OAuth2Available)
+                            {
+                                authInfo.UserGoogleAuthenticated = true;
+                                _logger.Log(Oqtane.Shared.LogLevel.Information, this, LogFunction.Other, 
+                                    "OAuth2 token available for user {Email}", authInfo.UserEmail ?? "unknown");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.Log(Oqtane.Shared.LogLevel.Debug, this, LogFunction.Other, 
+                                "OAuth2 token check failed: {Error}", ex.Message);
+                            authInfo.OAuth2Available = false;
+                        }
                     }
-                }
-                else
-                {
-                    authInfo.OAuth2Available = false;
-                    authInfo.UserGoogleAuthenticated = false;
                 }
                 
-                // Set error message if no auth methods available
+                // Set appropriate error messages with detailed guidance
                 if (!authInfo.ServiceAccountAvailable && !authInfo.OAuth2Available)
                 {
-                    authInfo.ErrorMessage = "No Google authentication configured. Please configure either service account or OAuth2 authentication.";
+                    authInfo.ErrorMessage = "No Google authentication configured. Please configure service account credentials in site settings or enable OAuth2 external login.";
                 }
-                else if (!authInfo.ServiceAccountAvailable)
+                else if (authInfo.ServiceAccountAvailable && string.IsNullOrEmpty(authInfo.UserEmail))
                 {
-                    authInfo.ErrorMessage = "Service account not configured. Organization calendars will not be available.";
+                    authInfo.ErrorMessage = "User email not available for Google impersonation. Please ensure user profile contains email address.";
                 }
-                else if (!authInfo.OAuth2Available)
+                else if (authInfo.ServiceAccountAvailable && !authInfo.ImpersonationAvailable && !authInfo.OAuth2Available)
                 {
-                    authInfo.ErrorMessage = "User not authenticated with Google. Personal calendars will not be available.";
+                    authInfo.ErrorMessage = $"Domain-wide delegation not configured for user {authInfo.UserEmail}. Please configure domain-wide delegation in Google Workspace Admin Console or enable OAuth2.";
+                }
+                else if (!authInfo.UserGoogleAuthenticated)
+                {
+                    authInfo.ErrorMessage = "User not authenticated with Google. Please check authentication configuration.";
                 }
             }
             catch (Exception ex)
             {
-                _logger.Log(Oqtane.Shared.LogLevel.Error, this, LogFunction.Other, "Error checking auth info: {Error}", ex.Message);
+                _logger.Log(Oqtane.Shared.LogLevel.Error, this, LogFunction.Other, 
+                    "Error checking auth info: {Error}", ex.Message);
                 authInfo.ErrorMessage = $"Error checking authentication: {ex.Message}";
             }
             
             return authInfo;
         }
+
+        //private async Task<bool> TestImpersonationAsync(string userEmail)
+        //{
+        //    try
+        //    {
+        //        // Test with minimal scope to verify impersonation works
+        //        var testScopes = new[] { "https://www.googleapis.com/auth/userinfo.email" };
+        //        var credential = GetGoogleCredentialFromServiceKey(testScopes, userEmail);
+                
+        //        // Make a simple API call to verify the credential works
+        //        var oauth2Service = new Oauth2Service(new BaseClientService.Initializer()
+        //        {
+        //            HttpClientInitializer = credential,
+        //            ApplicationName = "Oqtane Google Admin Test"
+        //        });
+
+        //        // This will throw if impersonation is not properly configured
+        //        var userInfo = await oauth2Service.Userinfo.Get().ExecuteAsync();
+                
+        //        _logger.Log(Oqtane.Shared.LogLevel.Debug, this, LogFunction.Other, 
+        //            "Impersonation test successful for {Email}, got user info for {ActualEmail}", 
+        //            userEmail, userInfo.Email);
+                
+        //        return userInfo.Email?.Equals(userEmail, StringComparison.OrdinalIgnoreCase) == true;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.Log(Oqtane.Shared.LogLevel.Debug, this, LogFunction.Other, 
+        //            "Impersonation test failed for {Email}: {Error}", userEmail, ex.Message);
+        //        return false;
+        //    }
+        //}
 
         public ServiceAccountCredential GetServiceAccountCredential(string[] scopes)
         {
@@ -121,7 +177,7 @@ namespace Dev1.Module.GoogleAdmin.Services
             }
         }
 
-        public async Task<GoogleCredential> GetUserGoogleCredentialAsync(string[] scopes)
+        public async Task<GoogleCredential> GetUserGoogleCredentialAsync(string[] scopes, string userEmail)
         {
             var httpContext = _httpContextAccessor.HttpContext;
             if (httpContext?.User?.Identity?.IsAuthenticated != true)
@@ -129,35 +185,89 @@ namespace Dev1.Module.GoogleAdmin.Services
                 throw new UnauthorizedAccessException("User not authenticated.");
             }
 
+            // Get user's email from Oqtane authentication
+            //var userEmail = GetCurrentUserEmail();
+            
+            if (string.IsNullOrEmpty(userEmail))
+            {
+                _logger.Log(Oqtane.Shared.LogLevel.Warning, this, LogFunction.Other, 
+                    "User email not available for impersonation, falling back to OAuth");
+                return await GetUserGoogleCredentialViaOAuthAsync(scopes);
+            }
+
             try
             {
-                // Get the access token from Oqtane's OAuth2 authentication
+                // Try service account impersonation first
+                var credential = GetGoogleCredentialFromServiceKey(scopes, userEmail);
+                
+                _logger.Log(Oqtane.Shared.LogLevel.Debug, this, LogFunction.Other, 
+                    "Successfully created impersonation credential for user {Email}", userEmail);
+                
+                return credential;
+            }
+            catch (Exception ex)
+            {
+                _logger.Log(Oqtane.Shared.LogLevel.Warning, this, LogFunction.Other, 
+                    "Failed to impersonate user {Email}: {Error}. Falling back to OAuth.", userEmail, ex.Message);
+                
+                // Fallback to original OAuth approach if impersonation fails
+                return await GetUserGoogleCredentialViaOAuthAsync(scopes);
+            }
+        }
+
+        //private string GetCurrentUserEmail()
+        //{
+        //    var httpContext = _httpContextAccessor.HttpContext;
+            
+        //    // Try to get email from various claim types in order of preference
+        //    var emailClaim = httpContext?.User?.FindFirst(System.Security.Claims.ClaimTypes.Email) ??
+        //                     httpContext?.User?.FindFirst("email") ??
+        //                     httpContext?.User?.FindFirst("preferred_username") ??
+        //                     httpContext?.User?.FindFirst("upn") ??
+        //                     httpContext?.User?.FindFirst("unique_name");
+            
+        //    var email = emailClaim?.Value;
+            
+        //    _logger.Log(Oqtane.Shared.LogLevel.Debug, this, LogFunction.Other, 
+        //        "Retrieved user email: {Email} from claim type: {ClaimType}", 
+        //        email ?? "null", emailClaim?.Type ?? "none");
+            
+        //    return email;
+        //}
+
+        private async Task<GoogleCredential> GetUserGoogleCredentialViaOAuthAsync(string[] scopes)
+        {
+            var httpContext = _httpContextAccessor.HttpContext;
+            
+            try
+            {
                 var accessToken = await httpContext.GetTokenAsync("access_token");
                 
                 if (string.IsNullOrEmpty(accessToken))
                 {
-                    throw new UnauthorizedAccessException("User not authenticated with Google. Please log in with Google.");
+                    throw new UnauthorizedAccessException("User not authenticated with Google and impersonation failed. Please log in with Google or configure domain-wide delegation.");
                 }
 
-                // Create credential from access token
                 var credential = GoogleCredential.FromAccessToken(accessToken);
                 
-                // Ensure it has the required scopes
                 if (credential.IsCreateScopedRequired)
                 {
                     credential = credential.CreateScoped(scopes);
                 }
 
+                _logger.Log(Oqtane.Shared.LogLevel.Debug, this, LogFunction.Other, 
+                    "Successfully created OAuth credential for user");
+
                 return credential;
             }
             catch (Exception ex)
             {
-                _logger.Log(Oqtane.Shared.LogLevel.Error, this, LogFunction.Other, "Failed to get user access token: {Error}", ex.Message);
-                throw new InvalidOperationException($"Failed to get user access token: {ex.Message}", ex);
+                _logger.Log(Oqtane.Shared.LogLevel.Error, this, LogFunction.Other, 
+                    "Failed to get OAuth credential: {Error}", ex.Message);
+                throw new UnauthorizedAccessException($"Unable to authenticate user with Google: {ex.Message}", ex);
             }
         }
 
-        // Method still needed by existing GoogleDriveService and GoogleDirectoryService - remove obsolete attribute
         public GoogleCredential GetGoogleCredentialFromServiceKey(string[] scopes, string delegatedEmailAddress)
         {
             var settings = _settingRepository.GetSettings("Site");
@@ -179,15 +289,59 @@ namespace Dev1.Module.GoogleAdmin.Services
                 if (!string.IsNullOrEmpty(delegatedEmailAddress))
                 {
                     credential = credential.CreateWithUser(delegatedEmailAddress);
+                    
+                    _logger.Log(Oqtane.Shared.LogLevel.Debug, this, LogFunction.Other, 
+                        "Created service account credential with user delegation for {Email}", delegatedEmailAddress);
+                }
+                else
+                {
+                    _logger.Log(Oqtane.Shared.LogLevel.Debug, this, LogFunction.Other, 
+                        "Created service account credential without user delegation");
                 }
 
                 return credential;
             }
             catch (Exception ex)
             {
-                _logger.Log(Oqtane.Shared.LogLevel.Error, this, LogFunction.Other, "Failed to create Google credential from service key: {Error}", ex.Message);
+                _logger.Log(Oqtane.Shared.LogLevel.Error, this, LogFunction.Other, 
+                    "Failed to create Google credential from service key for user {Email}: {Error}", 
+                    delegatedEmailAddress ?? "none", ex.Message);
                 throw new InvalidOperationException($"Failed to create Google credential from service key: {ex.Message}", ex);
             }
+        }
+
+        /// <summary>
+        /// Gets setup instructions for domain-wide delegation
+        /// </summary>
+        public string GetDomainWideDelegationInstructions()
+        {
+            return @"
+To enable service account impersonation (domain-wide delegation):
+
+1. Google Cloud Console:
+   - Go to IAM & Admin > Service Accounts
+   - Find your service account and click on it
+   - Go to 'Details' tab
+   - Note the 'Unique ID' (Client ID)
+
+2. Google Workspace Admin Console:
+   - Go to Security > API Controls > Domain-wide delegation
+   - Click 'Add new'
+   - Enter the Client ID from step 1
+   - Add these OAuth scopes (comma-separated):
+     * https://www.googleapis.com/auth/calendar
+     * https://www.googleapis.com/auth/admin.directory.group
+     * https://www.googleapis.com/auth/admin.directory.group.member
+     * https://www.googleapis.com/auth/admin.directory.user
+   - Click 'Authorize'
+
+3. Requirements:
+   - Users must have email addresses that match their Google Workspace accounts
+   - Service account must be from the same Google Cloud project
+   - Only Google Workspace Super Admins can configure domain-wide delegation
+
+Note: This allows the service account to impersonate any user in your domain.
+Configure appropriate application-level permissions to control access.";
         }
     }
 }

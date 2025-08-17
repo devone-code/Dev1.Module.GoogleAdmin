@@ -1,25 +1,29 @@
 using System;
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-using Oqtane.Models;
 
 namespace Dev1.Module.GoogleAdmin.Shared.Models
 {
     /// <summary>
-    /// Defines the authentication mode for accessing Google Calendars
+    /// Defines the authentication mode for accessing Google APIs
     /// </summary>
     public enum CalendarAuthMode
     {
         /// <summary>
-        /// Use service account to access organization calendars
+        /// Use service account to access organization resources
         /// </summary>
-        [Display(Name ="Organisation")]
+        [Display(Name = "Organization")]
         OrganizationCalendar,
 
         /// <summary>
-        /// Use OAuth2 user tokens to access user's personal calendars
+        /// Use service account impersonation or OAuth2 for user resources
         /// </summary>
         [Display(Name = "User")]
-        UserCalendar
+        UserCalendar,
+
+        /// <summary>
+        /// Force OAuth2 authentication (bypass impersonation)
+        /// </summary>
+        [Display(Name = "OAuth2 Only")]
+        OAuth2Only
     }
 }

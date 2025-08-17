@@ -48,19 +48,17 @@ namespace Dev1.Module.GoogleAdmin
         public IList<SecondaryInputProperty> SecondaryInputProperties { get; set; }
         public Data Data { get; set; }
 
-
-
         //You can define your secondary input properties and setttins as enums if you wish
         private enum  eSecondaryProperties
         {
             Latitude,
             Longitude,
-            StreetNumber,
+            Number,
             Street,
             Suburb,
             City,
             State,
-            PostalCode,
+            PostCode,
             Country
         }
 
@@ -84,7 +82,7 @@ namespace Dev1.Module.GoogleAdmin
             {
                 new SecondaryInputProperty
                 {
-                    Name = eSecondaryProperties.StreetNumber.ToString(),
+                    Name = eSecondaryProperties.Number.ToString(),
                     HelpText = "",
                     IsVisible = true,
                     IsEditable = true,
@@ -139,7 +137,7 @@ namespace Dev1.Module.GoogleAdmin
                 },
                 new SecondaryInputProperty
                 {
-                    Name = eSecondaryProperties.PostalCode.ToString(),
+                    Name = eSecondaryProperties.PostCode.ToString(),
                     HelpText = "",
                     IsVisible = true,
                     IsEditable = true,
@@ -201,23 +199,35 @@ namespace Dev1.Module.GoogleAdmin
                     DataType = eDataType.Table,
                     HelpText = "Select country to restrict address results",
                     DisplayOptionValue = "US",
-                    Options = new[] { "US", "CA", "UK", "AU", "DE", "FR" }
+                    Options = new[] { "None","US", "CA", "UK", "AU", "DE", "FR" }
                 },
             };
         }
 
         // Event handlers remain unchanged
-        public async Task<CustomInputTransfer> OnInputAsync(CustomInputTransfer customInput, int moduleId, int userId, int siteId, int QuestionId)
+        public async Task<CustomInputTransfer> OnInputAsync(CustomInputTransfer customInput, int moduleId, int? userId, int siteId, int QuestionId)
         {
-            // ... existing implementation unchanged
             try
             {
+                var countryRestriction = customInput.Settings?.FirstOrDefault(x => x.Name == eSettings.CountryRestriction.ToString())?.Value?.ToString() ?? "";
+                
                 var request = new PlacesAutoCompleteRequest
                 {
                     Key = customInput.Settings?.FirstOrDefault(x => x.Name == eSettings.GoogleApiKey.ToString())?.Value?.ToString() ?? "",
                     Input = customInput.MainInputProperty?.Value?.ToString() ?? "",
-                    Region = customInput.Settings?.FirstOrDefault(x => x.Name == eSettings.CountryRestriction.ToString())?.Value?.ToString() ?? "",
                 };
+
+                // Use Components for strict country restriction
+                if (!string.IsNullOrEmpty(countryRestriction) && countryRestriction != "None")
+                {
+                    request.Components = new[]
+                    {
+                        new KeyValuePair<GoogleApi.Entities.Common.Enums.Component, string>(
+                            GoogleApi.Entities.Common.Enums.Component.Country,
+                            countryRestriction.ToLower()
+                        )
+                    };
+                }
 
                 var response = await GooglePlaces.AutoComplete.QueryAsync(request);
                 var suggestions = new List<TransferDataItem>();
@@ -231,7 +241,7 @@ namespace Dev1.Module.GoogleAdmin
                             suggestions.Add(new TransferDataItem
                             {
                                 Name = prediction.Description,
-                                Value = prediction.PlaceId // Use PlaceId as value for selection
+                                Value = prediction.PlaceId
                             });
                         }
                     }
@@ -239,7 +249,6 @@ namespace Dev1.Module.GoogleAdmin
                     customInput.Data = new TransferData
                     {
                         Items = suggestions,
-                        //SelectedItem = suggestions.FirstOrDefault() // Automatically select the first suggestion
                     };
 
                     customInput.Status = eResultStatus.Success;
@@ -251,8 +260,7 @@ namespace Dev1.Module.GoogleAdmin
                     customInput.ErrorMessage = response.ErrorMessage;
                 }
 
-                    return customInput;
-
+                return customInput;
             }
             catch (Exception ex)
             {
@@ -266,7 +274,7 @@ namespace Dev1.Module.GoogleAdmin
             }
         }
 
-        public async Task<CustomInputTransfer> OnUpdateAsync(CustomInputTransfer customInput, int moduleId, int userId, int siteId, int QuestionId)
+        public async Task<CustomInputTransfer> OnUpdateAsync(CustomInputTransfer customInput, int moduleId, int? userId, int siteId, int QuestionId)
         {
             try
             {
@@ -276,12 +284,12 @@ namespace Dev1.Module.GoogleAdmin
                 if (updatedSecondaryProperty != null)
                 {
                     // Secondary property was updated - reconstruct the formatted address from components
-                    var streetNumber = customInput.SecondaryProperties.FirstOrDefault(x => x.Name == eSecondaryProperties.StreetNumber.ToString())?.Value?.ToString() ?? "";
+                    var streetNumber = customInput.SecondaryProperties.FirstOrDefault(x => x.Name == eSecondaryProperties.Number.ToString())?.Value?.ToString() ?? "";
                     var street = customInput.SecondaryProperties.FirstOrDefault(x => x.Name == eSecondaryProperties.Street.ToString())?.Value?.ToString() ?? "";
                     var suburb = customInput.SecondaryProperties.FirstOrDefault(x => x.Name == eSecondaryProperties.Suburb.ToString())?.Value?.ToString() ?? "";
                     var city = customInput.SecondaryProperties.FirstOrDefault(x => x.Name == eSecondaryProperties.City.ToString())?.Value?.ToString() ?? "";
                     var state = customInput.SecondaryProperties.FirstOrDefault(x => x.Name == eSecondaryProperties.State.ToString())?.Value?.ToString() ?? "";
-                    var postalCode = customInput.SecondaryProperties.FirstOrDefault(x => x.Name == eSecondaryProperties.PostalCode.ToString())?.Value?.ToString() ?? "";
+                    var postalCode = customInput.SecondaryProperties.FirstOrDefault(x => x.Name == eSecondaryProperties.PostCode.ToString())?.Value?.ToString() ?? "";
                     var country = customInput.SecondaryProperties.FirstOrDefault(x => x.Name == eSecondaryProperties.Country.ToString())?.Value?.ToString() ?? "";
 
                     // Build formatted address from components
@@ -349,7 +357,7 @@ namespace Dev1.Module.GoogleAdmin
                                 {
                                     // Street Number
                                     var streetNumber = addressComponents.FirstOrDefault(x => x.Types.Contains(GoogleApi.Entities.Common.Enums.AddressComponentType.Street_Number));
-                                    customInput.SecondaryProperties.First(x => x.Name == eSecondaryProperties.StreetNumber.ToString()).Value = streetNumber?.LongName ?? "";
+                                    customInput.SecondaryProperties.First(x => x.Name == eSecondaryProperties.Number.ToString()).Value = streetNumber?.LongName ?? "";
 
                                     // Street/Route
                                     var route = addressComponents.FirstOrDefault(x => x.Types.Contains(GoogleApi.Entities.Common.Enums.AddressComponentType.Route));
@@ -370,7 +378,7 @@ namespace Dev1.Module.GoogleAdmin
 
                                     // Postal Code
                                     var postalCode = addressComponents.FirstOrDefault(x => x.Types.Contains(GoogleApi.Entities.Common.Enums.AddressComponentType.Postal_Code));
-                                    customInput.SecondaryProperties.First(x => x.Name == eSecondaryProperties.PostalCode.ToString()).Value = postalCode?.LongName ?? "";
+                                    customInput.SecondaryProperties.First(x => x.Name == eSecondaryProperties.PostCode.ToString()).Value = postalCode?.LongName ?? "";
 
                                     // Country
                                     var country = addressComponents.FirstOrDefault(x => x.Types.Contains(GoogleApi.Entities.Common.Enums.AddressComponentType.Country));
@@ -414,7 +422,7 @@ namespace Dev1.Module.GoogleAdmin
             }
         }
 
-        public async Task<CustomInputTransfer> ExecuteAsync(CustomInputTransfer customInput, int moduleId, int userId, int siteId, int QuestionId, IDictionary<string, string> context)
+        public async Task<CustomInputTransfer> ExecuteAsync(CustomInputTransfer customInput, int moduleId, int? userId, int siteId, int QuestionId, IDictionary<string, string> context)
         {
             context.Add($"{customInput.Key}.testContext", "TestValue");
             customInput.Status = eResultStatus.Success;

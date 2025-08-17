@@ -40,9 +40,6 @@
     <Reference Include="Dev1.Flow.Core">
       <HintPath>..\..\Dev1.Module.Flow\Dev1.Flow.Core\bin\Debug\net9.0\Dev1.Flow.Core.dll</HintPath>
     </Reference>
-    <Reference Include="Dev1.Module.Flow.Shared.Oqtane">
-      <HintPath>..\..\Dev1.Module.Flow\Client\bin\Debug\net9.0\Dev1.Module.Flow.Shared.Oqtane.dll</HintPath>
-    </Reference>
     <Reference Include="Dev1.QandA.Core">
       <HintPath>..\..\Dev1.Module.QandA\Dev1.QandA.Core\bin\Debug\net9.0\Dev1.QandA.Core.dll</HintPath>
     </Reference>

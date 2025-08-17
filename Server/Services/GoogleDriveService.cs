@@ -46,7 +46,7 @@ namespace Dev1.Module.GoogleAdmin.Services
             _fileRepository = fileRepository;
         }
 
-        public IList<Drive> GetDriveAsync(int moduleId)
+        public IList<Drive> GetDriveAsync(int moduleId, string userEmail)
         {
             if (!_userPermissions.IsAuthorized(_httpContextAccessor.HttpContext.User, _alias.SiteId, EntityNames.Module, moduleId, PermissionNames.View))
             {
@@ -55,7 +55,7 @@ namespace Dev1.Module.GoogleAdmin.Services
 
             try
             {
-                var driveService = CreateDriveService();
+                var driveService = CreateDriveService(userEmail);
 
                 var driveRequest = driveService.Drives.List();
                 var drives = driveRequest.Execute();
@@ -64,17 +64,17 @@ namespace Dev1.Module.GoogleAdmin.Services
             }
             catch (Google.GoogleApiException ex)
             {
-                _logger.Log(LogLevel.Error, this, LogFunction.Other, "Error getting drives for module {ModuleId}: {Error}", moduleId, ex.Message);
+                _logger.Log(LogLevel.Error, this, LogFunction.Other, "Error getting drives for module {ModuleId} for user {UserEmail}: {Error}", moduleId, userEmail, ex.Message);
                 throw new Exception($"Google Drive API Error: {ex.Message}", ex);
             }
             catch (Exception ex)
             {
-                _logger.Log(LogLevel.Error, this, LogFunction.Other, "Error getting drives for module {ModuleId}: {Error}", moduleId, ex.Message);
+                _logger.Log(LogLevel.Error, this, LogFunction.Other, "Error getting drives for module {ModuleId} for user {UserEmail}: {Error}", moduleId, userEmail, ex.Message);
                 throw;
             }
         }
 
-        public async Task<IList<Google.Apis.Drive.v3.Data.File>> GetFoldersAsync(int moduleId, string parentFolderId = "Website Uploads")
+        public async Task<IList<Google.Apis.Drive.v3.Data.File>> GetFoldersAsync(int moduleId, string userEmail, string parentFolderId = "root")
         {
             if (!_userPermissions.IsAuthorized(_httpContextAccessor.HttpContext.User, _alias.SiteId, EntityNames.Module, moduleId, PermissionNames.View))
             {
@@ -83,7 +83,7 @@ namespace Dev1.Module.GoogleAdmin.Services
 
             try
             {
-                var driveService = CreateDriveService();
+                var driveService = await CreateDriveServiceAsync(userEmail);
 
                 var listRequest = driveService.Files.List();
                 listRequest.Q = "mimeType='application/vnd.google-apps.folder'";
@@ -97,17 +97,17 @@ namespace Dev1.Module.GoogleAdmin.Services
             }
             catch (Google.GoogleApiException ex)
             {
-                _logger.Log(LogLevel.Error, this, LogFunction.Other, "Error getting folders for module {ModuleId}: {Error}", moduleId, ex.Message);
+                _logger.Log(LogLevel.Error, this, LogFunction.Other, "Error getting folders for module {ModuleId} for user {UserEmail}: {Error}", moduleId, userEmail, ex.Message);
                 throw new Exception($"Google Drive API Error: {ex.Message}", ex);
             }
             catch (Exception ex)
             {
-                _logger.Log(LogLevel.Error, this, LogFunction.Other, "Error getting folders for module {ModuleId}: {Error}", moduleId, ex.Message);
+                _logger.Log(LogLevel.Error, this, LogFunction.Other, "Error getting folders for module {ModuleId} for user {UserEmail}: {Error}", moduleId, userEmail, ex.Message);
                 throw;
             }
         }
 
-        public async Task<string> UploadFileAsync(int moduleId, string fileName, string contentType, string base64FileData, string folderId = "root")
+        public async Task<string> UploadFileAsync(int moduleId, string userEmail, string fileName, string contentType, string base64FileData, string folderId = "root")
         {
             if (!_userPermissions.IsAuthorized(_httpContextAccessor.HttpContext.User, _alias.SiteId, EntityNames.Module, moduleId, PermissionNames.Edit))
             {
@@ -121,7 +121,7 @@ namespace Dev1.Module.GoogleAdmin.Services
 
             try
             {
-                var driveService = CreateDriveService();
+                var driveService = await CreateDriveServiceAsync(userEmail);
                 byte[] fileBytes = Convert.FromBase64String(base64FileData);
                 
                 using var fileStream = new MemoryStream(fileBytes);
@@ -146,26 +146,26 @@ namespace Dev1.Module.GoogleAdmin.Services
                     throw result.Exception ?? new Exception("Upload failed with unknown error");
                 }
 
-                _logger.Log(LogLevel.Information, this, LogFunction.Create, "File {FileName} uploaded to Google Drive", fileName);
+                _logger.Log(LogLevel.Information, this, LogFunction.Create, "File {FileName} uploaded to Google Drive for user {UserEmail}", fileName, userEmail);
                 return returnedFile.WebViewLink;
             }
             catch (Google.GoogleApiException ex)
             {
-                _logger.Log(LogLevel.Error, this, LogFunction.Other, "Error uploading file {FileName}: {Error}", fileName, ex.Message);
+                _logger.Log(LogLevel.Error, this, LogFunction.Other, "Error uploading file {FileName} for user {UserEmail}: {Error}", fileName, userEmail, ex.Message);
                 throw new Exception($"Google Drive API Error: {ex.Message}", ex);
             }
             catch (Exception ex)
             {
-                _logger.Log(LogLevel.Error, this, LogFunction.Other, "Error uploading file {FileName}: {Error}", fileName, ex.Message);
+                _logger.Log(LogLevel.Error, this, LogFunction.Other, "Error uploading file {FileName} for user {UserEmail}: {Error}", fileName, userEmail, ex.Message);
                 throw;
             }
         }
 
-        public string DownloadFile(string fileId)
+        public string DownloadFile(string fileId, string userEmail)
         {
             try
             {
-                var driveService = CreateDriveService();
+                var driveService = CreateDriveService(userEmail);
                 var request = driveService.Files.Get(fileId);
                 var stream = new MemoryStream();
 
@@ -191,17 +191,17 @@ namespace Dev1.Module.GoogleAdmin.Services
             }
             catch (Google.GoogleApiException ex)
             {
-                _logger.Log(LogLevel.Error, this, LogFunction.Other, "Error downloading file {FileId}: {Error}", fileId, ex.Message);
+                _logger.Log(LogLevel.Error, this, LogFunction.Other, "Error downloading file {FileId} for user {UserEmail}: {Error}", fileId, userEmail, ex.Message);
                 throw new Exception($"Google Drive API Error: {ex.Message}", ex);
             }
             catch (Exception ex)
             {
-                _logger.Log(LogLevel.Error, this, LogFunction.Other, "Error downloading file {FileId}: {Error}", fileId, ex.Message);
+                _logger.Log(LogLevel.Error, this, LogFunction.Other, "Error downloading file {FileId} for user {UserEmail}: {Error}", fileId, userEmail, ex.Message);
                 throw;
             }
         }
 
-        private DriveService CreateDriveService()
+        private DriveService CreateDriveService(string userEmail)
         {
             var scopes = new[] { 
                 DriveService.Scope.Drive, 
@@ -211,7 +211,27 @@ namespace Dev1.Module.GoogleAdmin.Services
                 DriveService.Scope.DriveAppdata 
             };
 
-            var credential = _googleCredentials.GetServiceAccountCredential(scopes);
+            var credential = _googleCredentials.GetGoogleCredentialFromServiceKey(scopes, userEmail);
+            var applicationName = GetApplicationName();
+
+            return new DriveService(new Google.Apis.Services.BaseClientService.Initializer
+            {
+                HttpClientInitializer = credential,
+                ApplicationName = applicationName
+            });
+        }
+
+        private async Task<DriveService> CreateDriveServiceAsync(string userEmail)
+        {
+            var scopes = new[] { 
+                DriveService.Scope.Drive, 
+                DriveService.Scope.DriveFile, 
+                DriveService.Scope.DriveReadonly,
+                DriveService.Scope.DriveMetadata,
+                DriveService.Scope.DriveAppdata 
+            };
+
+            var credential = await _googleCredentials.GetUserGoogleCredentialAsync(scopes, userEmail);
             var applicationName = GetApplicationName();
 
             return new DriveService(new Google.Apis.Services.BaseClientService.Initializer

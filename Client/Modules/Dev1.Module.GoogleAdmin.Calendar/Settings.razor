@@ -299,7 +299,7 @@
     {
         try
         {
-            authInfo = await GoogleCalendarService.GetCalendarAuthInfoAsync(ModuleState.ModuleId);
+            authInfo = await GoogleCalendarService.GetCalendarAuthInfoAsync(ModuleState.ModuleId, PageState.User.Email);
         }
         catch (Exception ex)
         {
@@ -327,7 +327,7 @@
         try
         {
             // Try to get the calendar details to verify access
-            var calendar = await GoogleCalendarService.GetGoogleCalendarAsync(ModuleState.ModuleId, _selectedCalendarId, CalendarAuthMode.OrganizationCalendar);
+            var calendar = await GoogleCalendarService.GetGoogleCalendarAsync(ModuleState.ModuleId, _selectedCalendarId, CalendarAuthMode.OrganizationCalendar, PageState.User.Email);
             
             if (calendar != null)
             {

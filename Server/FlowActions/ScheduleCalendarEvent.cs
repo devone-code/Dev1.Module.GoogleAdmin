@@ -1,12 +1,10 @@
 ﻿using Dev1.Flow.Core;
 using Dev1.Flow.Core.DTOs;
+using Dev1.Flow.Core.Helpers;
 using Dev1.Flow.Core.Models;
-using Dev1.Module.Flow.Helpers;
+
 using Dev1.Module.GoogleAdmin.Services;
 using Dev1.Module.GoogleAdmin.Shared.Models;
-using Google.Apis.Admin.Directory.directory_v1.Data;
-using Microsoft.Extensions.DependencyInjection;
-using NodaTime.TimeZones;
 using Oqtane.Repository;
 using System;
 using System.Collections.Generic;
@@ -107,7 +105,7 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
                 }
         };
 
-        public async Task ExecuteActionAsync(WorkflowItemDto WorkflowItem, int SiteId, int moduleId, int userId, string ContextName, string ContextEmail)
+        public async Task ExecuteActionAsync(WorkflowItemDto WorkflowItem, int SiteId, int moduleId, int loggedInUserId, string ContextName, string ContextEmail)
         {
             try
             {
@@ -116,12 +114,12 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
 
                 ////Get the properties we need to process this item.
                 //var OrganisationCalendar = WorkflowHelpers.GetItemPropertyValue(WorkflowItem, "Organisation Calendar");
-                var Calendar = WorkflowHelpers.GetItemPropertyValue(WorkflowItem, "Calendar");
-                var Timezone = WorkflowHelpers.GetItemPropertyValue(WorkflowItem, "Timezone");
-                var StartDate = WorkflowHelpers.GetItemPropertyValue(WorkflowItem, "Start Date");
-                var EndDate = WorkflowHelpers.GetItemPropertyValue(WorkflowItem, "End Date");
-                var Summary = WorkflowHelpers.GetItemPropertyValue(WorkflowItem, "Summary");
-                var Location = WorkflowHelpers.GetItemPropertyValue(WorkflowItem, "Location");
+                var Calendar = FlowActionHelpers.GetItemPropertyValue(WorkflowItem, "Calendar");
+                var Timezone = FlowActionHelpers.GetItemPropertyValue(WorkflowItem, "Timezone");
+                var StartDate = FlowActionHelpers.GetItemPropertyValue(WorkflowItem, "Start Date");
+                var EndDate = FlowActionHelpers.GetItemPropertyValue(WorkflowItem, "End Date");
+                var Summary = FlowActionHelpers.GetItemPropertyValue(WorkflowItem, "Summary");
+                var Location = FlowActionHelpers.GetItemPropertyValue(WorkflowItem, "Location");
                 //var Description = WorkflowHelpers.GetItemPropertyValue(WorkflowItem, "Description");
 
 
@@ -154,7 +152,7 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
                     moduleId,
                     Calendar,
                     Shared.Models.CalendarAuthMode.UserCalendar,
-                    appointment
+                    appointment,ContextEmail
                 );
 
 

@@ -1,17 +1,15 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using System.Threading.Tasks;
-using Dev1.Flow.Core;
+﻿using Dev1.Flow.Core;
+using Dev1.Flow.Core.DTOs;
+using Dev1.Flow.Core.Helpers;
 using Dev1.Flow.Core.Models;
-using Dev1.Module.GoogleAdmin.Services;
-using Dev1.Module.Flow.Helpers;
-using System;
 using Dev1.Module.GoogleAdmin.Models;
+using Dev1.Module.GoogleAdmin.Services;
+using Microsoft.Extensions.DependencyInjection;
 using Oqtane.Repository;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using Dev1.Flow.Core.DTOs;
-using Dev1.Module.Flow.Models;
-
+using System.Threading.Tasks;
 
 //This class, along with the razor view for this Flow Action need the same namespace and Name
 //For display purposes, the Razor view may contain spaces, flow will remove these when attempting to find the Flow Processor for this action
@@ -101,17 +99,16 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
                 }
         };
 
-        public async Task ExecuteActionAsync(WorkflowItemDto WorkflowItem, int SiteId,int moduleId,int userId, string ContextName, string ContextEmail)
+        public async Task ExecuteActionAsync(WorkflowItemDto WorkflowItem, int SiteId,int moduleId,int loggedInUserId, string ContextName, string ContextEmail)
         {
             try
             {
-
                 // Get required properties
-                var fileName = WorkflowHelpers.GetItemPropertyValue(WorkflowItem, "File Name");
-                var fileData = WorkflowHelpers.GetItemPropertyAdditionalData(WorkflowItem, "File Name");
+                var fileName = FlowActionHelpers.GetItemPropertyValue(WorkflowItem, "File Name");
+                var fileData = FlowActionHelpers.GetItemPropertyAdditionalData(WorkflowItem, "File Name");
 
-                var folderId = WorkflowHelpers.GetItemPropertyValue(WorkflowItem, "Folder Id");
-                var defaultFileName = WorkflowHelpers.GetItemPropertyValue(WorkflowItem, "Default File Name");
+                var folderId = FlowActionHelpers.GetItemPropertyValue(WorkflowItem, "Folder Id");
+                var defaultFileName = FlowActionHelpers.GetItemPropertyValue(WorkflowItem, "Default File Name");
 
                 eDefaultFileName fileNameType;
                 Enum.TryParse(defaultFileName,out fileNameType);
@@ -126,7 +123,7 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
                         }
                     case eDefaultFileName.AppendEmail:
                         {
-                            var user = _userRepository.GetUser(userId);
+                            var user = _userRepository.GetUser(loggedInUserId);
                             if(user != null)
                                 fullFileName = $"{user.Email}_{fileName}";
                             else
@@ -158,12 +155,12 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
                 //string fileName = "uploaded_file.txt"; // You might want to make this configurable
                 string contentType = "application/octet-stream"; // You might want to make this configurable
 
-                string result = await _googleDriveService.UploadFileAsync(
-                    moduleId,
-                    fullFileName,
-                    contentType,
-                    fileData,
-                    folderId);
+                string result = await _googleDriveService.UploadFileAsync(moduleId, ContextEmail, fullFileName, contentType, fileData, folderId);
+                    //moduleId,
+                    //fullFileName,
+                    //contentType,
+                    //fileData,
+                    //folderId);
 
 
                 WorkflowItem.Status = (int)eActionStatus.Pass;
@@ -180,10 +177,12 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
         {
             try
             {
+                var user = _userRepository.GetUser(userid);
+                string userEmail = user?.Email ?? string.Empty;
                 switch (propertyName)
                 {
                     case "Folder Id":
-                        var folders = await _googleDriveService.GetFoldersAsync(moduleid);
+                        var folders = await _googleDriveService.GetFoldersAsync(moduleid,userEmail);
                         if (folders != null)
                         {
                             return new ActionDataResponse
