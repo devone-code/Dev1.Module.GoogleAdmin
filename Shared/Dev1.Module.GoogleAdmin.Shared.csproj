@@ -19,9 +19,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="Dev1.Flow.Core">
-      <HintPath>..\..\Dev1.Module.Flow\Dev1.Flow.Core\bin\Debug\net9.0\Dev1.Flow.Core.dll</HintPath>
-    </Reference>
     <Reference Include="Oqtane.Shared"><HintPath>..\..\oqtane.framework\Oqtane.Server\bin\Debug\net9.0\Oqtane.Shared.dll</HintPath></Reference>
   </ItemGroup>
 
