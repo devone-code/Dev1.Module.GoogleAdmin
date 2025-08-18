@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <PackageReference Include="Dev1.Flow.Core" Version="2.0.3" />
+    <PackageReference Include="Dev1.QandA.Core" Version="1.0.4" />
     <PackageReference Include="Google.Apis" Version="1.69.0" />
     <PackageReference Include="Google.Apis.Admin.Directory.directory_v1" Version="1.69.0.3700" />
     <PackageReference Include="Google.Apis.Calendar.v3" Version="1.69.0.3667" />
@@ -38,9 +39,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="Dev1.QandA.Core">
-      <HintPath>..\..\Dev1.Module.QandA\Dev1.QandA.Core\bin\Debug\net9.0\Dev1.QandA.Core.dll</HintPath>
-    </Reference>
     <Reference Include="Oqtane.Server"><HintPath>..\..\oqtane.framework\Oqtane.Server\bin\Debug\net9.0\Oqtane.Server.dll</HintPath></Reference>
     <Reference Include="Oqtane.Shared"><HintPath>..\..\oqtane.framework\Oqtane.Server\bin\Debug\net9.0\Oqtane.Shared.dll</HintPath></Reference>
   </ItemGroup>
