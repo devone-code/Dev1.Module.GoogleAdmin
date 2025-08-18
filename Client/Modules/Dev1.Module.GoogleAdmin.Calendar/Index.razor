@@ -261,25 +261,28 @@ else
 
         try
         {
-            // Check OAuth authentication first
-            var authInfo = await GoogleCalendarService.GetCalendarAuthInfoAsync(ModuleState.ModuleId, PageState.User.Email);
-            if (!authInfo.UserGoogleAuthenticated)
+            if (PageState.User != null && !String.IsNullOrEmpty(PageState.User.Email))
             {
-                userCalendarError = "You must sign into this website using Google to view your calendars";
-                return;
+                // Check OAuth authentication first
+                var authInfo = await GoogleCalendarService.GetCalendarAuthInfoAsync(ModuleState.ModuleId, PageState.User.Email);
+                if (!authInfo.UserGoogleAuthenticated)
+                {
+                    userCalendarError = "You must sign into this website using Google to view your calendars";
+                    return;
+                }
+
+                var calendarList = await GoogleCalendarService.GetAvailableGoogleCalendarsAsync(ModuleState.ModuleId, CalendarAuthMode.UserCalendar, PageState.User.Email);
+                userCalendars = calendarList?.Items?.ToList() ?? new List<CalendarListEntry>();
+
+                if (!userCalendars.Any())
+                {
+                    userCalendarError = "No calendars found. Please ensure you're logged in with Google.";
+                    return;
+                }
+
+                // Auto-select calendar that matches logged-in user's email
+                await TryAutoSelectUserCalendar();
             }
-
-            var calendarList = await GoogleCalendarService.GetAvailableGoogleCalendarsAsync(ModuleState.ModuleId, CalendarAuthMode.UserCalendar, PageState.User.Email);
-            userCalendars = calendarList?.Items?.ToList() ?? new List<CalendarListEntry>();
-
-            if (!userCalendars.Any())
-            {
-                userCalendarError = "No calendars found. Please ensure you're logged in with Google.";
-                return;
-            }
-
-            // Auto-select calendar that matches logged-in user's email
-            await TryAutoSelectUserCalendar();
         }
         catch (Google.GoogleApiException ex)
         {
@@ -290,7 +293,7 @@ else
         }
         catch (Exception ex)
         {
-            userCalendarError = $"Error loading calendars: {ex.Message}";
+            userCalendarError = $"Error loading calendars: {ex.Message}. PLEASE NOTE: For the google modules to work, your users must be able to login using Google's OAuth.";
         }
         finally
         {
