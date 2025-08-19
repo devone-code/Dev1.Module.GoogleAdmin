@@ -50,13 +50,10 @@ namespace Dev1.Module.GoogleAdmin.Services
                     // Check if we can use impersonation
                     if (authInfo.ServiceAccountAvailable && !string.IsNullOrEmpty(authInfo.UserEmail))
                     {
-                        //authInfo.ImpersonationAvailable = await TestImpersonationAsync(authInfo.UserEmail);
-                        //if (authInfo.ImpersonationAvailable)
-                        //{
                             authInfo.UserGoogleAuthenticated = true;
                             _logger.Log(Oqtane.Shared.LogLevel.Information, this, LogFunction.Other, 
                                 "Service account impersonation available for user {Email}", authInfo.UserEmail);
-                        //}
+                        
                     }
                     
                     // Fallback to OAuth check if impersonation not available
@@ -110,39 +107,7 @@ namespace Dev1.Module.GoogleAdmin.Services
             return authInfo;
         }
 
-        //private async Task<bool> TestImpersonationAsync(string userEmail)
-        //{
-        //    try
-        //    {
-        //        // Test with minimal scope to verify impersonation works
-        //        var testScopes = new[] { "https://www.googleapis.com/auth/userinfo.email" };
-        //        var credential = GetGoogleCredentialFromServiceKey(testScopes, userEmail);
-                
-        //        // Make a simple API call to verify the credential works
-        //        var oauth2Service = new Oauth2Service(new BaseClientService.Initializer()
-        //        {
-        //            HttpClientInitializer = credential,
-        //            ApplicationName = "Oqtane Google Admin Test"
-        //        });
-
-        //        // This will throw if impersonation is not properly configured
-        //        var userInfo = await oauth2Service.Userinfo.Get().ExecuteAsync();
-                
-        //        _logger.Log(Oqtane.Shared.LogLevel.Debug, this, LogFunction.Other, 
-        //            "Impersonation test successful for {Email}, got user info for {ActualEmail}", 
-        //            userEmail, userInfo.Email);
-                
-        //        return userInfo.Email?.Equals(userEmail, StringComparison.OrdinalIgnoreCase) == true;
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        _logger.Log(Oqtane.Shared.LogLevel.Debug, this, LogFunction.Other, 
-        //            "Impersonation test failed for {Email}: {Error}", userEmail, ex.Message);
-        //        return false;
-        //    }
-        //}
-
-        public ServiceAccountCredential GetServiceAccountCredential(string[] scopes)
+         public ServiceAccountCredential GetServiceAccountCredential(string[] scopes)
         {
             var settings = _settingRepository.GetSettings("Site");
             var serviceKey = settings.FirstOrDefault(x => x.SettingName == "Dev1.GoogleAdmin:ServiceKey");
@@ -154,7 +119,6 @@ namespace Dev1.Module.GoogleAdmin.Services
 
             try
             {
-                // In .NET 9, create GoogleCredential first, apply scopes, then extract ServiceAccountCredential
                 var googleCredential = GoogleCredential.FromJson(serviceKey.SettingValue);
                 
                 // Apply scopes to GoogleCredential
@@ -184,9 +148,6 @@ namespace Dev1.Module.GoogleAdmin.Services
             {
                 throw new UnauthorizedAccessException("User not authenticated.");
             }
-
-            // Get user's email from Oqtane authentication
-            //var userEmail = GetCurrentUserEmail();
             
             if (string.IsNullOrEmpty(userEmail))
             {
@@ -214,26 +175,6 @@ namespace Dev1.Module.GoogleAdmin.Services
                 return await GetUserGoogleCredentialViaOAuthAsync(scopes);
             }
         }
-
-        //private string GetCurrentUserEmail()
-        //{
-        //    var httpContext = _httpContextAccessor.HttpContext;
-            
-        //    // Try to get email from various claim types in order of preference
-        //    var emailClaim = httpContext?.User?.FindFirst(System.Security.Claims.ClaimTypes.Email) ??
-        //                     httpContext?.User?.FindFirst("email") ??
-        //                     httpContext?.User?.FindFirst("preferred_username") ??
-        //                     httpContext?.User?.FindFirst("upn") ??
-        //                     httpContext?.User?.FindFirst("unique_name");
-            
-        //    var email = emailClaim?.Value;
-            
-        //    _logger.Log(Oqtane.Shared.LogLevel.Debug, this, LogFunction.Other, 
-        //        "Retrieved user email: {Email} from claim type: {ClaimType}", 
-        //        email ?? "null", emailClaim?.Type ?? "none");
-            
-        //    return email;
-        //}
 
         private async Task<GoogleCredential> GetUserGoogleCredentialViaOAuthAsync(string[] scopes)
         {

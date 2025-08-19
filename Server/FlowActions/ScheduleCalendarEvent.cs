@@ -11,17 +11,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-//This class, along with the razor view for this Flow Action need the same namespace and Name
-//For display purposes, the Razor view may contain spaces, flow will remove these when attempting to find the Flow Processor for this action
-//EG:
-//  Notification Email.razor and NotificationEmail.cs will work 
-//  Notification Email.razor and NotificationEmai.cs will work
-//
-//  Notification EmailView.razor and NotificationEmail.cs will not work as they have different names once the spaces have been removed
-
 namespace Dev1.Module.GoogleAdmin.GoogleAction
 {
-    //[FlowProcessor(serviceLifetime: ServiceLifetime.Scoped)]
     public class ScheduleCalendarEvent : IFlowProcessor
     {
         public string ActionName => "Schedule Google Calendar Event";
@@ -109,32 +100,16 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
         {
             try
             {
-
-
-
                 ////Get the properties we need to process this item.
-                //var OrganisationCalendar = WorkflowHelpers.GetItemPropertyValue(WorkflowItem, "Organisation Calendar");
                 var Calendar = FlowActionHelpers.GetItemPropertyValue(WorkflowItem, "Calendar");
                 var Timezone = FlowActionHelpers.GetItemPropertyValue(WorkflowItem, "Timezone");
                 var StartDate = FlowActionHelpers.GetItemPropertyValue(WorkflowItem, "Start Date");
                 var EndDate = FlowActionHelpers.GetItemPropertyValue(WorkflowItem, "End Date");
                 var Summary = FlowActionHelpers.GetItemPropertyValue(WorkflowItem, "Summary");
                 var Location = FlowActionHelpers.GetItemPropertyValue(WorkflowItem, "Location");
-                //var Description = WorkflowHelpers.GetItemPropertyValue(WorkflowItem, "Description");
-
-
-                //This action should have an additional property of "User to Add":
-                //1 SourceUser: The user who was logged in when this flow was triggered
-                //2 Specific User: Email address
-                //For now, just use the sigend in user (Workflow.CreatedBy).
 
                 var user = _userRepository.GetUser(WorkflowItem.ProcessedByUserId);
-                //bool ForOrganisation;
-                //Boolean.TryParse(OrganisationCalendar, out ForOrganisation);
-                //string impersonateAccount = null;
 
-                //if (!ForOrganisation)
-                //    impersonateAccount = user.Email;
                 ExtendedAppointment appointment = new ExtendedAppointment()
                 {
                     Timezone = Timezone,
@@ -146,8 +121,6 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
                     Location = Location,
                 };
 
-
-
                 var eventId = await _googleCalendarService.CreateExtendedCalendarEventAsync(
                     moduleId,
                     Calendar,
@@ -155,10 +128,6 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
                     appointment,ContextEmail
                 );
 
-
-                //await _googleCalendarService.ScheduleCalendarEventAsync(moduleId, impersonateAccount, 
-                //    Calendar, Timezone, Convert.ToDateTime(StartDate), Convert.ToDateTime(EndDate), Summary,
-                //    user.DisplayName, user.Email);
                 WorkflowItem.LastResponse = $"Google Event: {eventId} Created";
                 WorkflowItem.Status = (int)eActionStatus.Pass;
 
@@ -209,17 +178,6 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
                                 Text = tz 
                             }).ToList()
                         };
-
-                    //case "Organisation Calendar":
-                    //    return new ActionDataResponse
-                    //    {
-                    //        Success = true,
-                    //        Items = new List<ActionDataItem> 
-                    //        { 
-                    //            new ActionDataItem { Value = "true", Text = "Yes" },
-                    //            new ActionDataItem { Value = "false", Text = "No" }
-                    //        }
-                    //    };
                 }
 
                 return new ActionDataResponse

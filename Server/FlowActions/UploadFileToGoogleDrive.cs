@@ -11,17 +11,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-//This class, along with the razor view for this Flow Action need the same namespace and Name
-//For display purposes, the Razor view may contain spaces, flow will remove these when attempting to find the Flow Processor for this action
-//EG:
-//  Notification Email.razor and NotificationEmail.cs will work 
-//  NotificationEmail.razor and NotificationEmai.cs will work
-//
-//  Notification EmailView.razor and NotificationEmail.cs will not work as they have different names once the spaces have been removed
-
 namespace Dev1.Module.GoogleAdmin.GoogleAction
 {
-    //[FlowProcessor(serviceLifetime: ServiceLifetime.Scoped)]
     public class UploadFileToGoogleDrive : IFlowProcessor
     {
         public string ActionName => "Upload file to Google";
@@ -156,12 +147,6 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
                 string contentType = "application/octet-stream"; // You might want to make this configurable
 
                 string result = await _googleDriveService.UploadFileAsync(moduleId, ContextEmail, fullFileName, contentType, fileData, folderId);
-                    //moduleId,
-                    //fullFileName,
-                    //contentType,
-                    //fileData,
-                    //folderId);
-
 
                 WorkflowItem.Status = (int)eActionStatus.Pass;
                 WorkflowItem.LastResponse = $"The google file link is - {result}";

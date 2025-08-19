@@ -25,11 +25,7 @@ namespace Dev1.Module.GoogleAdmin
             _autoComplete = autoComplete ?? throw new ArgumentNullException(nameof(autoComplete));
             _geocode = geocode;
         }
-
-        // Core Identity
         public string Key => this.GetType().FullName;
-
-        //Your Input types will be grouled by this name in the designer.
         public string FriendlyComponentName => "Google Admin";
         public string Name => "Google Address Autocomplete";
         public string Description => "Provides address autocomplete using Google Places API";
@@ -72,10 +68,8 @@ namespace Dev1.Module.GoogleAdmin
             MainInputProperty = new MainInputProperty
             {
                 Name = "Address",
-                //Description = "Enter an address",
                 DataType = eDataType.String,
                 DisplayType = StringDisplayType.Text.ToString(),
-                //HelpText = "Type an address to get suggestions",
             };
             
             SecondaryInputProperties = new List<SecondaryInputProperty>
@@ -203,8 +197,6 @@ namespace Dev1.Module.GoogleAdmin
                 },
             };
         }
-
-        // Event handlers remain unchanged
         public async Task<CustomInputTransfer> OnInputAsync(CustomInputTransfer customInput, int moduleId, int? userId, int siteId, int QuestionId)
         {
             try
@@ -217,7 +209,6 @@ namespace Dev1.Module.GoogleAdmin
                     Input = customInput.MainInputProperty?.Value?.ToString() ?? "",
                 };
 
-                // Use Components for strict country restriction
                 if (!string.IsNullOrEmpty(countryRestriction) && countryRestriction != "None")
                 {
                     request.Components = new[]
@@ -315,7 +306,7 @@ namespace Dev1.Module.GoogleAdmin
                     // Update the main input property with the reconstructed address
                     customInput.MainInputProperty.Value = string.Join(", ", addressParts);
 
-                    // Reset the IsForUpdate flag
+                    // Reset the IsForUpdate flag !!!!!!
                     updatedSecondaryProperty.IsForUpdate = false;
 
                     customInput.Status = eResultStatus.Success;

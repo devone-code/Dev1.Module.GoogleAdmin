@@ -32,8 +32,6 @@ namespace Dev1.Module.GoogleAdmin.Startup
             services.AddScoped<IGoogleDirectoryService, ServerGoogleDirectoryService>();
             services.AddScoped<IGoogleDriveService, ServerGoogleDriveService>();
             services.AddScoped<IGoogleCredentials, GoogleCredentials>();
-            
-
 
             services.AddRadzenComponents();
             services.AddRadzenQueryStringThemeService();
@@ -45,9 +43,6 @@ namespace Dev1.Module.GoogleAdmin.Startup
 
             services
                 .AddGoogleApiClients();
-
-
-            //services.RegisterFlowServices<ServerStartup>();
         }
     }
 }

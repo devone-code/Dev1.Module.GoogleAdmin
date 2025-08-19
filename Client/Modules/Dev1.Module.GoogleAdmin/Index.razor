@@ -19,28 +19,10 @@ else
         <p>You only need to add one of these modules per site, as the settings are saved site wide.</p>
 
     
-    @* <ActionLink Action="Add" Security="SecurityAccessLevel.Edit" Text="Add GoogleAdmin" ResourceKey="Add" /> *@
+  
     <br />
     <br />
-@*     @if (@_GoogleAdmins.Count != 0)
-    {
-        <Pager Items="@_GoogleAdmins">
-            <Header>
-                <th style="width: 1px;">&nbsp;</th>
-                <th style="width: 1px;">&nbsp;</th>
-                <th>@Localizer["Name"]</th>
-            </Header>
-            <Row>
-                <td><ActionLink Action="Edit" Parameters="@($"id=" + context.GoogleAdminId.ToString())" ResourceKey="Edit"  /></td>
-                <td><ActionDialog Header="Delete GoogleAdmin" Message="Are You Sure You Wish To Delete This GoogleAdmin?" Action="Delete" Security="SecurityAccessLevel.Edit" Class="btn btn-danger" OnClick="@(async () => await Delete(context))" ResourceKey="Delete"  Id="@context.GoogleAdminId.ToString()" /></td>
-                <td>@context.Name</td>
-            </Row>
-        </Pager>
-    }
-    else
-    {
-        <p>@Localizer["Message.DisplayNone"]</p>
-    } *@
+
 }
 
 @code {
