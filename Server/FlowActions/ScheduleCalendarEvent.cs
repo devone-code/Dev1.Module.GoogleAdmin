@@ -96,19 +96,19 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
                 }
         };
 
-        public async Task ExecuteActionAsync(WorkflowItemDto WorkflowItem, int SiteId, int moduleId, int loggedInUserId, string ContextName, string ContextEmail)
+        public async Task<ExecuteActionContext> ExecuteActionAsync(ExecuteActionContext ActionContext)
         {
             try
             {
                 ////Get the properties we need to process this item.
-                var Calendar = FlowActionHelpers.GetItemPropertyValue(WorkflowItem, "Calendar");
-                var Timezone = FlowActionHelpers.GetItemPropertyValue(WorkflowItem, "Timezone");
-                var StartDate = FlowActionHelpers.GetItemPropertyValue(WorkflowItem, "Start Date");
-                var EndDate = FlowActionHelpers.GetItemPropertyValue(WorkflowItem, "End Date");
-                var Summary = FlowActionHelpers.GetItemPropertyValue(WorkflowItem, "Summary");
-                var Location = FlowActionHelpers.GetItemPropertyValue(WorkflowItem, "Location");
+                var Calendar = FlowActionHelpers.GetItemPropertyValue(ActionContext.WorkflowItem, "Calendar");
+                var Timezone = FlowActionHelpers.GetItemPropertyValue(ActionContext.WorkflowItem, "Timezone");
+                var StartDate = FlowActionHelpers.GetItemPropertyValue(ActionContext.WorkflowItem, "Start Date");
+                var EndDate = FlowActionHelpers.GetItemPropertyValue(ActionContext.WorkflowItem, "End Date");
+                var Summary = FlowActionHelpers.GetItemPropertyValue(ActionContext.WorkflowItem, "Summary");
+                var Location = FlowActionHelpers.GetItemPropertyValue(ActionContext.WorkflowItem, "Location");
 
-                var user = _userRepository.GetUser(WorkflowItem.ProcessedByUserId);
+                var user = _userRepository.GetUser(ActionContext.WorkflowItem.ProcessedByUserId);
 
                 ExtendedAppointment appointment = new ExtendedAppointment()
                 {
@@ -122,21 +122,22 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
                 };
 
                 var eventId = await _googleCalendarService.CreateExtendedCalendarEventAsync(
-                    moduleId,
+                    ActionContext.ModuleId,
                     Calendar,
                     Shared.Models.CalendarAuthMode.UserCalendar,
-                    appointment,ContextEmail
+                    appointment, ActionContext.ContextEmail
                 );
 
-                WorkflowItem.LastResponse = $"Google Event: {eventId} Created";
-                WorkflowItem.Status = (int)eActionStatus.Pass;
+                ActionContext.WorkflowItem.LastResponse = $"Google Event: {eventId} Created";
+                ActionContext.WorkflowItem.Status = (int)eActionStatus.Pass;
 
             }
             catch(Exception ex)
             {
-                WorkflowItem.LastResponse = ex.Message;
-                WorkflowItem.Status = (int)eActionStatus.Fail;
+                ActionContext.WorkflowItem.LastResponse = ex.Message;
+                ActionContext.WorkflowItem.Status = (int)eActionStatus.Fail;
             }
+            return ActionContext;
         }
 
         public async Task<ActionDataResponse> GetActionDataAsync(string propertyName, int moduleid, int userid, int siteId)

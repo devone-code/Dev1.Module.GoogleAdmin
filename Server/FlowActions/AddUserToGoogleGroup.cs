@@ -51,40 +51,41 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
             }
         };
 
-        public async Task ExecuteActionAsync(WorkflowItemDto WorkflowItem, int SiteId, int moduleId, int loggedInUserId, string ContextName, string ContextEmail)
+        public async Task<ExecuteActionContext> ExecuteActionAsync(ExecuteActionContext ActionContext)
         {
             try
             {
 
                 // Get the properties we need to process this item
-                var group = FlowActionHelpers.GetItemPropertyValue(WorkflowItem, "User Group");
-                var role = FlowActionHelpers.GetItemPropertyValue(WorkflowItem, "Role");
+                var group = FlowActionHelpers.GetItemPropertyValue(ActionContext.WorkflowItem, "User Group");
+                var role = FlowActionHelpers.GetItemPropertyValue(ActionContext.WorkflowItem, "Role");
 
                 // Get the user to add to the group
                 //var user = _userRepository.GetUser(userId);
-                if (ContextEmail == null)
+                if (ActionContext.ContextEmail == null)
                 {
                     throw new Exception("User not found for manual processing");
                 }
 
                 // For service account processing, we might need to get the user email differently
                 // or it might be passed as part of the workflow context
-                string userEmail = ContextEmail;
+                string userEmail = ActionContext.ContextEmail;
 
                 if (string.IsNullOrEmpty(userEmail))
                 {
                     throw new Exception("User email not available for group membership");
                 }
 
-                await _googleDirectoryService.AddMemberToGroup(group, userEmail, role, moduleId, ContextEmail);
+                await _googleDirectoryService.AddMemberToGroup(group, userEmail, role, ActionContext.ModuleId, ActionContext.ContextEmail);
 
-                WorkflowItem.Status = (int)eActionStatus.Pass;
+                ActionContext.WorkflowItem.Status = (int)eActionStatus.Pass;
             }
             catch (Exception ex)
             {
-                WorkflowItem.LastResponse = ex.Message;
-                WorkflowItem.Status = (int)eActionStatus.Fail;
+                ActionContext.WorkflowItem.LastResponse = ex.Message;
+                ActionContext.WorkflowItem.Status = (int)eActionStatus.Fail;
             }
+            return ActionContext;
         }
 
         public async Task<ActionDataResponse> GetActionDataAsync(string propertyName, int moduleid, int userid, int siteId)

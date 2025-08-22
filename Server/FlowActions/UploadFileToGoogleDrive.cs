@@ -90,16 +90,16 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
                 }
         };
 
-        public async Task ExecuteActionAsync(WorkflowItemDto WorkflowItem, int SiteId,int moduleId,int loggedInUserId, string ContextName, string ContextEmail)
+        public async Task<ExecuteActionContext> ExecuteActionAsync(ExecuteActionContext ActionContext)
         {
             try
             {
                 // Get required properties
-                var fileName = FlowActionHelpers.GetItemPropertyValue(WorkflowItem, "File Name");
-                var fileData = FlowActionHelpers.GetItemPropertyAdditionalData(WorkflowItem, "File Name");
+                var fileName = FlowActionHelpers.GetItemPropertyValue(ActionContext.WorkflowItem, "File Name");
+                var fileData = FlowActionHelpers.GetItemPropertyAdditionalData(ActionContext.WorkflowItem, "File Name");
 
-                var folderId = FlowActionHelpers.GetItemPropertyValue(WorkflowItem, "Folder Id");
-                var defaultFileName = FlowActionHelpers.GetItemPropertyValue(WorkflowItem, "Default File Name");
+                var folderId = FlowActionHelpers.GetItemPropertyValue(ActionContext.WorkflowItem, "Folder Id");
+                var defaultFileName = FlowActionHelpers.GetItemPropertyValue(ActionContext.WorkflowItem, "Default File Name");
 
                 eDefaultFileName fileNameType;
                 Enum.TryParse(defaultFileName,out fileNameType);
@@ -114,7 +114,7 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
                         }
                     case eDefaultFileName.AppendEmail:
                         {
-                            var user = _userRepository.GetUser(loggedInUserId);
+                            var user = _userRepository.GetUser(ActionContext.LoggedInUserId);
                             if(user != null)
                                 fullFileName = $"{user.Email}_{fileName}";
                             else
@@ -123,7 +123,7 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
                         }
                     case eDefaultFileName.AppendUserName:
                         {
-                            var user = _userRepository.GetUser(WorkflowItem.ProcessedByUserId);
+                            var user = _userRepository.GetUser(ActionContext.WorkflowItem.ProcessedByUserId);
                             if(!String.IsNullOrEmpty(user.DisplayName))
                                 fullFileName = $"{user.DisplayName}_{fileName}";
                             else
@@ -146,16 +146,17 @@ namespace Dev1.Module.GoogleAdmin.GoogleAction
                 //string fileName = "uploaded_file.txt"; // You might want to make this configurable
                 string contentType = "application/octet-stream"; // You might want to make this configurable
 
-                string result = await _googleDriveService.UploadFileAsync(moduleId, ContextEmail, fullFileName, contentType, fileData, folderId);
+                string result = await _googleDriveService.UploadFileAsync(ActionContext.ModuleId, ActionContext.ContextEmail, fullFileName, contentType, fileData, folderId);
 
-                WorkflowItem.Status = (int)eActionStatus.Pass;
-                WorkflowItem.LastResponse = $"The google file link is - {result}";
+                ActionContext.WorkflowItem.Status = (int)eActionStatus.Pass;
+                ActionContext.WorkflowItem.LastResponse = $"The google file link is - {result}";
             }
             catch (Exception ex)
             {
-                WorkflowItem.LastResponse = ex.Message;
-                WorkflowItem.Status = (int)eActionStatus.Fail;
+                ActionContext.WorkflowItem.LastResponse = ex.Message;
+                ActionContext.WorkflowItem.Status = (int)eActionStatus.Fail;
             }
+            return ActionContext;
         }
 
         public async Task<ActionDataResponse> GetActionDataAsync(string propertyName, int moduleid, int userid, int siteId)

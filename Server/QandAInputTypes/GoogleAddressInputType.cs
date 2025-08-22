@@ -1,11 +1,8 @@
-﻿using Dev1.Flow.Core;
-using Dev1.Flow.Core.Models;
-using Dev1.QandA.Core.Interfaces;
+﻿using Dev1.QandA.Core.Interfaces;
 using Dev1.QandA.Core.Models;
 using GoogleApi;
 using GoogleApi.Entities.Maps.Geocoding.Place.Request;
 using GoogleApi.Entities.Places.AutoComplete.Request;
-using GoogleApi.Entities.Maps.Geocoding.Address.Request;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -201,8 +198,9 @@ namespace Dev1.Module.GoogleAdmin
         {
             try
             {
-                var countryRestriction = customInput.Settings?.FirstOrDefault(x => x.Name == eSettings.CountryRestriction.ToString())?.Value?.ToString() ?? "";
                 
+                var countryRestriction = customInput.Settings?.FirstOrDefault(x => x.Name == eSettings.CountryRestriction.ToString())?.Value?.ToString() ?? "";
+
                 var request = new PlacesAutoCompleteRequest
                 {
                     Key = customInput.Settings?.FirstOrDefault(x => x.Name == eSettings.GoogleApiKey.ToString())?.Value?.ToString() ?? "",
