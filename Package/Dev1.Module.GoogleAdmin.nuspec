@@ -38,6 +38,8 @@
 
 	  <file src="..\Server\bin\Release\net9.0\Radzen.Blazor.dll" target="lib\net9.0" />
 
+	  <file src="..\Server\bin\Release\net9.0\Dev1.Flow.Core.dll" target="lib\net9.0" />
+
 
 	  <file src="..\Server\bin\Release\net9.0\NodaTime.dll" target="lib\net9.0" />
 
