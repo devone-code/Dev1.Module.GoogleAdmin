@@ -12,7 +12,7 @@ namespace Dev1.Module.GoogleAdmin.Calendar
             Version = "1.0.0",
             ServerManagerType = "Dev1.Module.GoogleAdmin.Manager.GoogleAdminManager, Dev1.Module.GoogleAdmin.Server.Oqtane",
             ReleaseVersions = "1.0.0",
-            Dependencies = "Dev1.Module.GoogleAdmin.Shared.Oqtane,Dev1.Flow.Core,Radzen.Blazor,NodaTime,"+
+            Dependencies = "Dev1.Module.GoogleAdmin.Shared.Oqtane,Radzen.Blazor,NodaTime,"+
             "Google.Apis.Admin.Directory.directory_v1," +
             "Google.Apis.Auth," +
             "Google.Apis.Calendar.v3," +
