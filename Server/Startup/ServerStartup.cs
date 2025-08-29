@@ -26,6 +26,13 @@ namespace Dev1.Module.GoogleAdmin.Startup
 
         public void ConfigureServices(IServiceCollection services)
         {
+            //For Flow. Flow requires that you register  a keyed service
+            //for your Flow definition. Make sure you give it a unique name
+            //otherwise it may clash with other modules that implement Flow.
+            //When resolving in your services, you need to do so as:
+            //[FromKeyedServices("Dev1.GoogleAdmin_FlowInfo")]IFlowInfo flowInfo
+            services.AddKeyedScoped<IFlowInfo, FlowInfo>("Dev1.GoogleAdmin_FlowInfo");
+
 
             services.AddScoped<IGoogleAdminService, ServerGoogleAdminService>();
             services.AddScoped<IGoogleCalendarService, ServerGoogleCalendarService>();
