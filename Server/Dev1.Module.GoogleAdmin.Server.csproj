@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Dev1.Flow.Core" Version="4.0.1" />
+    <PackageReference Include="Dev1.Flow.Core" Version="4.1.0" />
     <PackageReference Include="Dev1.QandA.Core" Version="1.0.4" />
     <PackageReference Include="Google.Apis" Version="1.69.0" />
     <PackageReference Include="Google.Apis.Admin.Directory.directory_v1" Version="1.69.0.3700" />
