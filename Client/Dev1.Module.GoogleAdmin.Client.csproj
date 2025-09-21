@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <Authors>Dev1</Authors>
     <Company>Dev1</Company>
     <Description>For Accessing Google APIs</Description>
@@ -13,9 +13,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Google.Apis.Admin.Directory.directory_v1" Version="1.68.0.3631" />
+    <PackageReference Include="Google.Apis.Admin.Directory.directory_v1" Version="1.69.0.3700" />
     <PackageReference Include="Google.Apis.Calendar.v3" Version="1.69.0.3667" />
-    <PackageReference Include="Google.Apis.Drive.v3" Version="1.69.0.3674" />
+    <PackageReference Include="Google.Apis.Drive.v3" Version="1.69.0.3703" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="9.0.8" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Authentication" Version="9.0.8" />
     <PackageReference Include="Microsoft.Extensions.Localization" Version="9.0.8" />

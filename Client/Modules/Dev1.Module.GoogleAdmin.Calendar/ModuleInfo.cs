@@ -9,9 +9,9 @@ namespace Dev1.Module.GoogleAdmin.Calendar
         {
             Name = "Google Calendar",
             Description = "For Accessing & Working with the Google Calendar, including events",
-            Version = "1.0.0",
+            Version = "1.0.1",
             ServerManagerType = "Dev1.Module.GoogleAdmin.Manager.GoogleAdminManager, Dev1.Module.GoogleAdmin.Server.Oqtane",
-            ReleaseVersions = "1.0.0",
+            ReleaseVersions = "1.0.0,1.0.1",
             Dependencies = "Dev1.Module.GoogleAdmin.Shared.Oqtane,Radzen.Blazor,NodaTime,"+
             "Google.Apis.Admin.Directory.directory_v1," +
             "Google.Apis.Auth," +
