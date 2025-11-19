@@ -72,7 +72,7 @@ namespace Dev1.Module.GoogleAdmin.Controllers
         // GET: api/GoogleCalendar/calendar?moduleid=x&calendarid=x&authmode=x&useremail=x
         [HttpGet("calendar")]
         [Authorize(Policy = PolicyNames.ViewModule)]
-        public async Task<Calendar> GetCalendar(int moduleId, string calendarId, CalendarAuthMode authMode, string userEmail)
+        public async Task<Google.Apis.Calendar.v3.Data.Calendar> GetCalendar(int moduleId, string calendarId, CalendarAuthMode authMode, string userEmail)
         {
             if (IsAuthorizedEntityId(EntityNames.Module, moduleId))
             {

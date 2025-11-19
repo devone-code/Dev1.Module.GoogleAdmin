@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Oqtane.Infrastructure;
+using Oqtane.Modules;
 using Radzen;
 
 namespace Dev1.Module.GoogleAdmin.Startup
@@ -15,7 +16,7 @@ namespace Dev1.Module.GoogleAdmin.Startup
     {
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
-            // not implemented
+            
 
         }
 
@@ -40,11 +41,7 @@ namespace Dev1.Module.GoogleAdmin.Startup
             services.AddScoped<IGoogleDriveService, ServerGoogleDriveService>();
             services.AddScoped<IGoogleCredentials, GoogleCredentials>();
             services.AddScoped<ICalendarWatchService, ServerCalendarWatchService>();
-
             services.AddRadzenComponents();
-            services.AddRadzenQueryStringThemeService();
-
-
             services.AddDbContextFactory<GoogleAdminContext>(opt => { }, ServiceLifetime.Transient);
 
             services.AddScoped<IStateContainer,StateContainer>();

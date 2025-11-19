@@ -1,5 +1,7 @@
 using Oqtane.Models;
 using Oqtane.Modules;
+using Oqtane.Shared;
+using System.Collections.Generic;
 
 namespace Dev1.Module.GoogleAdmin.Calendar
 {
@@ -9,9 +11,9 @@ namespace Dev1.Module.GoogleAdmin.Calendar
         {
             Name = "Google Calendar",
             Description = "For Accessing & Working with the Google Calendar, including events",
-            Version = "1.0.1",
+            Version = "1.0.2",
             ServerManagerType = "Dev1.Module.GoogleAdmin.Manager.GoogleAdminManager, Dev1.Module.GoogleAdmin.Server.Oqtane",
-            ReleaseVersions = "1.0.0,1.0.1",
+            ReleaseVersions = "1.0.0,1.0.1,1.0.2",
             Dependencies = "Dev1.Module.GoogleAdmin.Shared.Oqtane,Radzen.Blazor,NodaTime,"+
             "Google.Apis.Admin.Directory.directory_v1," +
             "Google.Apis.Auth," +
@@ -20,6 +22,12 @@ namespace Dev1.Module.GoogleAdmin.Calendar
             "Google.Apis," +
             "Google.Apis.Drive.v3",
             PackageName = "Dev1.Module.GoogleAdmin",
+            Resources = new List<Resource>()
+            {
+               new Script("_content/Radzen.Blazor/Radzen.Blazor.js"),
+               new Resource { ResourceType = ResourceType.Script, Url = "_content/Dev1.Module.GoogleAdmin/Calendar.js" },
+               new Resource { ResourceType = ResourceType.Stylesheet, Url = "_content/Dev1.Module.GoogleAdmin/Calendar.css" },
+            }
         };
     }
 }

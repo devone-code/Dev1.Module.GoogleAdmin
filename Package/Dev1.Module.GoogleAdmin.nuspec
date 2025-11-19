@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
   <metadata>
     <id>Dev1.Module.GoogleAdmin</id>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
     <authors>Dev1</authors>
     <owners>Dev1</owners>
     <title>GoogleAdmin</title>
@@ -15,34 +15,31 @@
     <tags>oqtane module</tags>
     <releaseNotes></releaseNotes>
     <summary></summary>
-    <dependencies>
-      <dependency id="Oqtane.Framework" version="6.1.1" />
-    </dependencies>
+	  <dependencies>
+		  <group targetFramework="net10.0" />
+	  </dependencies>
+	  <packageTypes>
+		  <packageType name="Dependency" />
+		  <packageType name="Oqtane.Framework" version="10.0.0" />
+	  </packageTypes>
   </metadata>
   <files>
-    <file src="..\Client\bin\Release\net9.0\Dev1.Module.GoogleAdmin.Client.Oqtane.dll" target="lib\net9.0" /> 
-    <file src="..\Client\bin\Release\net9.0\Dev1.Module.GoogleAdmin.Client.Oqtane.pdb" target="lib\net9.0" /> 
-    <file src="..\Server\bin\Release\net9.0\Dev1.Module.GoogleAdmin.Server.Oqtane.dll" target="lib\net9.0" /> 
-    <file src="..\Server\bin\Release\net9.0\Dev1.Module.GoogleAdmin.Server.Oqtane.pdb" target="lib\net9.0" /> 
-    <file src="..\Shared\bin\Release\net9.0\Dev1.Module.GoogleAdmin.Shared.Oqtane.dll" target="lib\net9.0" /> 
-    <file src="..\Shared\bin\Release\net9.0\Dev1.Module.GoogleAdmin.Shared.Oqtane.pdb" target="lib\net9.0" />
-
- 
-	  <file src="..\Server\bin\Release\net9.0\Google.Apis.dll" target="lib\net9.0" />
-	  <file src="..\Server\bin\Release\net9.0\Google.Apis.Core.dll" target="lib\net9.0" />
-	  <file src="..\Server\bin\Release\net9.0\Google.Apis.Auth.dll" target="lib\net9.0" />
-	  
-	  <file src="..\Server\bin\Release\net9.0\Google.Apis.Calendar.v3.dll" target="lib\net9.0" />
-	  <file src="..\Server\bin\Release\net9.0\Google.Apis.Admin.Directory.directory_v1.dll" target="lib\net9.0" />
-	  <file src="..\Server\bin\Release\net9.0\Google.Apis.Drive.v3.dll" target="lib\net9.0" />
-
-	  <file src="..\Server\bin\Release\net9.0\Radzen.Blazor.dll" target="lib\net9.0" />
-	  <file src="..\Server\bin\Release\net9.0\NodaTime.dll" target="lib\net9.0" />
-
-	  <file src="..\Server\bin\Release\net9.0\Dev1.QandA.Core.dll" target="lib\net9.0" />
-	  <file src="..\Server\bin\Release\net9.0\GoogleApi.dll" target="lib\net9.0" />
-
-	  <file src="..\Server\wwwroot\**\*.*" target="wwwroot" /> 
+    <file src="..\Client\bin\Release\net10.0\Dev1.Module.GoogleAdmin.Client.Oqtane.dll" target="lib\net10.0" /> 
+    <file src="..\Client\bin\Release\net10.0\Dev1.Module.GoogleAdmin.Client.Oqtane.pdb" target="lib\net10.0" /> 
+    <file src="..\Server\bin\Release\net10.0\Dev1.Module.GoogleAdmin.Server.Oqtane.dll" target="lib\net10.0" /> 
+    <file src="..\Server\bin\Release\net10.0\Dev1.Module.GoogleAdmin.Server.Oqtane.pdb" target="lib\net10.0" /> 
+    <file src="..\Shared\bin\Release\net10.0\Dev1.Module.GoogleAdmin.Shared.Oqtane.dll" target="lib\net10.0" /> 
+    <file src="..\Shared\bin\Release\net10.0\Dev1.Module.GoogleAdmin.Shared.Oqtane.pdb" target="lib\net10.0" />
+	  <file src="..\Server\bin\Release\net10.0\Google.Apis.dll" target="lib\net10.0" />
+	  <file src="..\Server\bin\Release\net10.0\Google.Apis.Core.dll" target="lib\net10.0" />
+	  <file src="..\Server\bin\Release\net10.0\Google.Apis.Auth.dll" target="lib\net10.0" />
+	  <file src="..\Server\bin\Release\net10.0\Google.Apis.Calendar.v3.dll" target="lib\net10.0" />
+	  <file src="..\Server\bin\Release\net10.0\Google.Apis.Admin.Directory.directory_v1.dll" target="lib\net10.0" />
+	  <file src="..\Server\bin\Release\net10.0\Google.Apis.Drive.v3.dll" target="lib\net10.0" />
+	  <file src="..\Server\bin\Release\net10.0\NodaTime.dll" target="lib\net10.0" />
+	  <file src="..\Server\bin\Release\net10.0\Dev1.QandA.Core.dll" target="lib\net10.0" />
+	  <file src="..\Server\bin\Release\net10.0\GoogleApi.dll" target="lib\net10.0" />
+	  <file src="..\Server\wwwroot\**\*.*" target="staticwebassets" /> 
     <file src="icon.png" target="" />
   </files>
 </package>

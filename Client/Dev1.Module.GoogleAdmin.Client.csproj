@@ -1,8 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
-    <Version>1.0.1</Version>
+    <TargetFramework>net10.0</TargetFramework>
+    <Version>1.0.2</Version>
     <Authors>Dev1</Authors>
     <Company>Dev1</Company>
     <Description>For Accessing Google APIs</Description>
@@ -16,13 +16,12 @@
     <PackageReference Include="Google.Apis.Admin.Directory.directory_v1" Version="1.69.0.3700" />
     <PackageReference Include="Google.Apis.Calendar.v3" Version="1.69.0.3667" />
     <PackageReference Include="Google.Apis.Drive.v3" Version="1.69.0.3703" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="9.0.8" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Authentication" Version="9.0.8" />
-    <PackageReference Include="Microsoft.Extensions.Localization" Version="9.0.8" />
-    <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.8" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Authentication" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Localization" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
     <PackageReference Include="NodaTime" Version="3.2.2" />
-    <PackageReference Include="Radzen.Blazor" Version="6.0.1" />
-    <PackageReference Include="System.Net.Http.Json" Version="9.0.8" />
+    <PackageReference Include="Radzen.Blazor" Version="8.3.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -30,8 +29,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="Oqtane.Client"><HintPath>..\..\oqtane.framework\Oqtane.Server\bin\Debug\net9.0\Oqtane.Client.dll</HintPath></Reference>
-    <Reference Include="Oqtane.Shared"><HintPath>..\..\oqtane.framework\Oqtane.Server\bin\Debug\net9.0\Oqtane.Shared.dll</HintPath></Reference>
+    <Reference Include="Oqtane.Client"><HintPath>..\..\oqtane.framework\Oqtane.Server\bin\Debug\net10.0\Oqtane.Client.dll</HintPath></Reference>
+    <Reference Include="Oqtane.Shared"><HintPath>..\..\oqtane.framework\Oqtane.Server\bin\Debug\net10.0\Oqtane.Shared.dll</HintPath></Reference>
   </ItemGroup>
 
   <ItemGroup>

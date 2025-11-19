@@ -11,11 +11,9 @@ namespace Dev1.Module.GoogleAdmin.Startup
     {
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddRadzenComponents();
-            services.AddRadzenQueryStringThemeService();
-
             services.AddScoped<IGoogleAdminService, GoogleAdminService>();
             services.AddScoped<IGoogleCalendarService, GoogleCalendarService>();
+            services.AddRadzenComponents();
             //services.AddScoped<IGoogleDirectoryService, GoogleDirectoryService>();
             //services.AddScoped<IGoogleDriveService, GoogleDriveService>();
 

@@ -43,7 +43,7 @@ namespace Dev1.Module.GoogleAdmin.Services
             _googleCredentials = googleCredentials;
         }
 
-        public async Task<CalendarAuthInfo> GetCalendarAuthInfoAsync(int moduleId, string userEmail)
+        public async Task<Shared.Models.CalendarAuthInfo> GetCalendarAuthInfoAsync(int moduleId, string userEmail)
         {
             if (!_userPermissions.IsAuthorized(_httpContextAccessor.HttpContext.User, _alias.SiteId, EntityNames.Module, moduleId, PermissionNames.View))
             {
@@ -85,7 +85,7 @@ namespace Dev1.Module.GoogleAdmin.Services
             return await GetAvailableGoogleCalendarsAsync(moduleId, authMode, impersonateAccount);
         }
 
-        public async Task<Calendar> GetGoogleCalendarAsync(int moduleId, string calendarId, CalendarAuthMode authMode, string userEmail)
+        public async Task<Google.Apis.Calendar.v3.Data.Calendar> GetGoogleCalendarAsync(int moduleId, string calendarId, CalendarAuthMode authMode, string userEmail)
         {
             if (!_userPermissions.IsAuthorized(_httpContextAccessor.HttpContext.User, _alias.SiteId, EntityNames.Module, moduleId, PermissionNames.View))
             {
